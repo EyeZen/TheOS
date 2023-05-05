@@ -38,6 +38,7 @@ start:
 check_multiboot:
     cmp eax, 0x36d76289
     jne .no_multiboot
+    mov edi, ebx
     ret
 
 .no_multiboot:

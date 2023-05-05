@@ -49,7 +49,7 @@ iso: $(PROJECT).bin
 
 	@cp dist/$(PROJECT).bin dist/iso/boot/$(PROJECT).bin
 	@cp proj/grub.cfg dist/iso/boot/grub/grub.cfg
-	grub-mkrescue -o dist/$(PROJECT).iso dist/iso
+	@grub-mkrescue -o dist/$(PROJECT).iso dist/iso
 
 
 # qemu-system-x86_64 -kernel dist/Builder.bin

@@ -12,5 +12,17 @@ long_mode_start:
     mov fs, ax
     mov gs, ax
 
+    call reload_cr3
     call kernel_main
+
+    cli
+loop:
     hlt ; stop processing and wait for interrupts
+    jmp loop
+
+reload_cr3:
+    push rax
+    mov rax,cr3
+    mov cr3, rax
+    pop rax
+    ret

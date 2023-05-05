@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "utils.h": "c",
+        "print.h": "c",
+        "multiboot.h": "c"
+    }
+}
