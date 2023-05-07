@@ -18,9 +18,8 @@
  *  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
  *  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
-#ifndef MULTIBOOT_HEADER
-#define MULTIBOOT_HEADER 1
+#ifndef MULTIBOOT_H
+#define MULTIBOOT_H
 
 /*  How many bytes from the start of the file we search for the header. */
 #define MULTIBOOT_SEARCH                        32768
@@ -86,8 +85,6 @@
 
 #define MULTIBOOT_CONSOLE_FLAGS_CONSOLE_REQUIRED 1
 #define MULTIBOOT_CONSOLE_FLAGS_EGA_TEXT_SUPPORTED 2
-
-#ifndef ASM_FILE
 
 typedef unsigned char           multiboot_uint8_t;
 typedef unsigned short          multiboot_uint16_t;
@@ -412,6 +409,16 @@ struct multiboot_tag_load_base_addr
   multiboot_uint32_t load_base_addr;
 } __attribute__((packed));
 
-#endif /*  ! ASM_FILE */
 
-#endif /*  ! MULTIBOOT_HEADER */
+
+/////////////////////////////////////////////
+
+struct multiboot_info_header {
+  multiboot_uint32_t total_size;
+  multiboot_uint32_t reserved;
+} __attribute__((packed));
+
+////////////////////////////////////////////
+
+
+#endif /*  ! MULTIBOOT_H */

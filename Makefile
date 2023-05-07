@@ -59,6 +59,9 @@ emu-bin:
 emu-iso:
 	qemu-system-x86_64 -cdrom dist/$(PROJECT).iso
 
+clean:
+	-@rm -rf build dist
+
 .PHONY: all
 
 
