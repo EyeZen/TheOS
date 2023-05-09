@@ -1,10 +1,24 @@
 #include "Logging.h"
 
 
+
+inline unsigned char in(int portnum)
+{
+    unsigned char data=0;
+    __asm__ __volatile__ ("inb %%dx, %%al" : "=a" (data) : "d" (portnum));       
+    return data;
+}
+
+inline void out(int portnum, unsigned char data)
+{
+    __asm__ __volatile__ ("outb %%al, %%dx" :: "a" (data),"d" (portnum));        
+}
+
+
 int _block_level_count = 0;
 
-inline void reset_block() { _block_level_count = 0; }
-inline void block_align() {
+void reset_block() { _block_level_count = 0; }
+void block_align() {
     for(int blk = 0; blk < _block_level_count; blk++) {
         log_char('\t');
     }
@@ -23,11 +37,11 @@ void log_anum(unsigned int num) {
     log_num(num);
 }
 
-inline void block_start() {
+void block_start() {
     log_astr("{\n"); 
     _block_level_count++; 
 }
-inline void block_end() { 
+void block_end() { 
     _block_level_count--; 
     // log_char('\n');
     log_astr("}\n");
@@ -83,7 +97,7 @@ void log_num(unsigned int num) {
     }
 }
 
-inline void log_endl() { log_char('\n'); }
+void log_endl() { log_char('\n'); }
 
 void log_tag(struct multiboot_tag* tag) 
 {
@@ -201,7 +215,7 @@ void log_tag(struct multiboot_tag* tag)
             log_astr("height: ");       log_num(t_fb->common.framebuffer_height);   log_endl();
             log_astr("bpp: ");          log_num(t_fb->common.framebuffer_bpp);      log_endl();
             log_astr("pitch: ");        log_num(t_fb->common.framebuffer_pitch);    log_endl();
-            log_astr("buffer-type: ");  log_str(multiboot_framebuffer_type[t_fb->common.framebuffer_type]);
+            log_astr("buffer-type: ");  log_str((char*)multiboot_framebuffer_type[t_fb->common.framebuffer_type]);
             log_endl();
         } break;
         case MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR: {

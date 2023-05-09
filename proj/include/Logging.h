@@ -5,19 +5,6 @@
 
 #define PORT 0x3f8
 
-
-inline unsigned char in(int portnum)
-{
-    unsigned char data=0;
-    __asm__ __volatile__ ("inb %%dx, %%al" : "=a" (data) : "d" (portnum));       
-    return data;
-}
-
-inline void out(int portnum, unsigned char data)
-{
-    __asm__ __volatile__ ("outb %%al, %%dx" :: "a" (data),"d" (portnum));        
-}
-
 int init_serial();
 
 void log_char(char ch);
@@ -31,8 +18,13 @@ void log_anum(unsigned int num);
 void log_tag(struct multiboot_tag* tag);
 void log_mbheader(struct multiboot_info_header* mboot_header);
 
-inline void block_start();
-inline void block_end();
-inline void reset_block();
+void block_start();
+void block_end();
+void reset_block();
+
+#define LOG_CALL(func) do { \
+    log_astr(#func); log_endl(); \
+    func(); \
+} while (0)
 
 #endif

@@ -110,3 +110,117 @@ MULTIBOOT_INFO_HEADER
 		size: 28
 	}
 }
+init_idt
+
+
+MULTIBOOT_INFO_HEADER
+{
+	Sÿ
+	{
+		type: 21
+		size: 12
+	}
+	MULTIBOOT_TAG_TYPE_CMDLINE
+	{
+		type: 1
+		size: 9
+		string: 
+	}
+	MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME
+	{
+		type: 2
+		size: 33
+		string: GRUB 2.02~beta3-5+deb9u2
+	}
+	MULTIBOOT_TAG_TYPE_EFI32
+	{
+		type: 10
+		size: 28
+	}
+	MULTIBOOT_TAG_TYPE_MMAP
+	{
+		type: 6
+		size: 184
+		entry_size: 24
+		entry_version: 
+
+		Entry:		{
+			base_addr: 
+			length: 654336
+			type: MULTIBOOT_MEMORY_AVAILABLE
+		}
+
+		Entry:		{
+			base_addr: 654336
+			length: 1024
+			type: MULTIBOOT_MEMORY_RESERVED
+		}
+
+		Entry:		{
+			base_addr: 983040
+			length: 65536
+			type: MULTIBOOT_MEMORY_RESERVED
+		}
+
+		Entry:		{
+			base_addr: 1048576
+			length: 133038080
+			type: MULTIBOOT_MEMORY_AVAILABLE
+		}
+
+		Entry:		{
+			base_addr: 134086656
+			length: 131072
+			type: MULTIBOOT_MEMORY_RESERVED
+		}
+
+		Entry:		{
+			base_addr: 4294705152
+			length: 262144
+			type: MULTIBOOT_MEMORY_RESERVED
+		}
+
+		Entry:		{
+			base_addr: 
+			length: 
+			type: MULTIBOOT_MEMORY_RESERVED
+		}
+	}
+	MULTIBOOT_TAG_TYPE_ELF_SECTIONSMULTIBOOT_TAG_TYPE_APM
+	{
+		type: 9
+		size: 916
+	}
+	MULTIBOOT_TAG_TYPE_BASIC_MEMINFO
+	{
+		type: 4
+		size: 16
+		mem_lower: 639
+		mem_upper: 129920
+	}
+	MULTIBOOT_TAG_TYPE_BOOTDEV
+	{
+		type: 5
+		size: 20
+		biosdev: 224
+		part: 8267272361
+		slice: 8267272361
+	}
+	MULTIBOOT_TAG_TYPE_FRAMEBUFFER
+	{
+		type: 8
+		size: 32
+		address: 753664
+		width: 80
+		height: 25
+		bpp: 16
+		pitch: 160
+		buffer-type: MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT
+	}
+	MULTIBOOT_TAG_TYPE_ACPI_NEW
+	{
+		type: 14
+		size: 28
+	}
+}
+init_idt
