@@ -1,4 +1,5 @@
 global start
+global page_table_l4
 extern long_mode_start
 
 section .text
@@ -94,6 +95,7 @@ check_long_mode:    ; check if 64-bit supported
     jmp error
 
 setup_page_tables:
+
     ; identity mapping: mapping a physical address to exactly same virtual address
     ; - paging is enabled when the long mode is activated
     ; - the following instructions will be executed to setup pagetable, hence their addresses are from before the paging is enabled
@@ -122,6 +124,32 @@ setup_page_tables:
     inc ecx     ; increment counter
     cmp ecx, 512; check if whole Level-2 table is mapped
     jne .loop ; if not, continue
+
+;
+; Self mapping Table Structure
+    ; map pml4 table into itself at 0x1ff or 511 , last entry
+    mov eax, page_table_l4
+    or eax, 0b11
+    mov ecx, 511
+    mov [page_table_l4 + ecx * 8], eax
+
+    ; map pdpr table into itself at 511
+    mov eax, page_table_l3
+    or eax, 0b11
+    mov ecx, 511
+    mov [page_table_l3 + ecx * 8], eax
+    
+    ; map pd table into itself at 511
+    mov eax, page_table_l2
+    or eax, 0b11
+    mov ecx, 511
+    mov [page_table_l2 + ecx * 8], eax
+    
+    ; map page table into itself at 511
+    mov eax, page_table_l1
+    or eax, 0b11
+    mov ecx, 511
+    mov [page_table_l1 + ecx * 8], eax
 
     ret
 

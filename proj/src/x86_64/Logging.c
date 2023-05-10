@@ -1,6 +1,8 @@
 #include "Logging.h"
+#include "utils.h"
+#include "RSDP.h"
 
-
+#define PAGE_FRAME_ADDRESS(page_frame) (page_frame & 0x000FFFFFFFFFF000)
 
 inline unsigned char in(int portnum)
 {
@@ -85,6 +87,11 @@ void log_num(unsigned int num) {
     unsigned int n0 = num, n1=0;
     unsigned int dig = 0;
 
+    if(num == 0) {
+        out(PORT, '0');
+        return;
+    }
+
     while(n0) {
         n1 = n1 * 10 + (n0 % 10);
         n0 /= 10;
@@ -99,6 +106,93 @@ void log_num(unsigned int num) {
 
 void log_endl() { log_char('\n'); }
 
+
+void log_page_table(uint64_t* pml4t) 
+{
+	log_astr("Page Table\n");
+	log_astr("PML4T:"); log_num((unsigned int)pml4t); log_endl();
+	block_start();
+	// Level 4: PML4T Traversal
+	for(int itr_pml4 = 0; itr_pml4 < 512; itr_pml4++) {
+		if(pml4t[itr_pml4] & 0x1ull) {
+            uint64_t* pdprt = (uint64_t*)PAGE_FRAME_ADDRESS(pml4t[itr_pml4]); // bits 51 : 12 
+
+            if(pdprt == pml4t) {
+                log_astr("PDPR_");log_num(itr_pml4);log_str(": ");
+                log_str("[PML4T]");
+                log_endl();
+                continue;
+            }
+
+			log_astr("PDPR_");log_num(itr_pml4);log_str(": ");
+			log_num(pml4t[itr_pml4]);log_char(':'); log_num((unsigned int)pdprt);
+            log_endl();
+
+            block_start();
+            // Level 3: PDPT Traversal
+            for(int itr_pdpr = 0; itr_pdpr < 512; itr_pdpr++) {
+                if(pdprt[itr_pdpr] & 0x1ull) {
+                    uint64_t* pdt = (uint64_t*)PAGE_FRAME_ADDRESS(pdprt[itr_pdpr]);
+
+                    if(pdt == pdprt) {
+                        log_astr("PD_");log_num(itr_pdpr);log_str(": ");
+                        log_str("[PDPR_");log_num(itr_pml4);log_char(']');
+                        log_endl();
+                        continue;
+                    }
+
+                    log_astr("PD_");log_num(itr_pdpr);log_str(": ");
+                    log_num(pdprt[itr_pdpr]);log_char(':'); log_num((unsigned int)pdt);
+                    log_endl();
+
+                    block_start();
+                    // Level 2: PDT Traversal
+                    for(int itr_pdt = 0; itr_pdt < 512; itr_pdt++) {
+                        if(pdt[itr_pdt] & 0x1ull) {
+                            uint64_t* pt = (uint64_t*)PAGE_FRAME_ADDRESS(pdt[itr_pdt]);
+
+                            if(pt == pdt) {
+                                log_astr("PT_");log_num(itr_pdt);log_str(": ");
+                                log_str("[PD_");log_num(itr_pdpr);log_char(']');
+                                log_endl();
+                                continue;
+                            }
+
+                            log_astr("PT_");log_num(itr_pdt);log_str(": ");
+                            log_num(pdt[itr_pdt]);log_char(':'); log_num((unsigned int)pt);
+                            log_endl();
+
+                            block_start();
+                            // Level 1: PT Traversal
+                            for(int itr_pt = 0; itr_pt < 512; itr_pt++) {
+                                if(pt[itr_pt] & 0x1ull) {
+                                    uint64_t* page = (uint64_t*)PAGE_FRAME_ADDRESS(pt[itr_pt]);
+
+                                    if(page == pt) {
+                                        log_astr("Page_");log_num(itr_pt);log_str(":");
+                                        log_str("[PT_");log_num(itr_pdt);log_char(']');
+                                        log_endl();
+                                        continue;
+                                    }
+
+                                    log_astr("Page_");log_num(itr_pt);log_str(":");
+                                    log_num(pt[itr_pt]);log_char(':'); log_num((unsigned int)page);
+                                    log_endl();
+                                }
+                            }
+                            block_end();
+
+                        }
+                    }
+                    block_end();
+                }
+            }
+            block_end();
+		}
+	}
+	block_end();
+}
+
 void log_tag(struct multiboot_tag* tag) 
 {
     const char* multiboot_tag_type[22] = {
@@ -111,7 +205,7 @@ void log_tag(struct multiboot_tag* tag)
         "MULTIBOOT_TAG_TYPE_MMAP",
         "MULTIBOOT_TAG_TYPE_VBE",
         "MULTIBOOT_TAG_TYPE_FRAMEBUFFER",
-        "MULTIBOOT_TAG_TYPE_ELF_SECTIONS"
+        "MULTIBOOT_TAG_TYPE_ELF_SECTIONS",
         "MULTIBOOT_TAG_TYPE_APM",
         "MULTIBOOT_TAG_TYPE_EFI32",
         "MULTIBOOT_TAG_TYPE_EFI64",
@@ -218,7 +312,22 @@ void log_tag(struct multiboot_tag* tag)
             log_astr("buffer-type: ");  log_str((char*)multiboot_framebuffer_type[t_fb->common.framebuffer_type]);
             log_endl();
         } break;
-        case MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR: {
+        case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
+            struct multiboot_tag_old_acpi* t_nacip = (struct multiboot_tag_old_acpi*)tag;
+            struct RSDPDescriptor* rsdp_desc = (struct RSDPDescriptor*)t_nacip->rsdp; 
+
+            log_astr("RSDPDescriptor:\n");
+            block_start();
+                log_astr("Signature: ");
+                    for(int i=0; i<8; i++) log_char(rsdp_desc->Signature[i]);
+                log_endl();
+                log_astr("Checksum: "); log_num(rsdp_desc->Checksum); log_endl();
+                log_astr("OEMID: ");
+                    for(int i=0; i<6; i++) log_char(rsdp_desc->OEMID[i]);
+                log_endl();
+                log_astr("Revision: "); log_num(rsdp_desc->Revision); log_endl();
+                log_astr("RSDTAddress: "); log_num(rsdp_desc->RSDTAddress); log_endl();
+            block_end();
 
         } break;
         default: {
@@ -233,7 +342,7 @@ void log_tag(struct multiboot_tag* tag)
 void log_mbheader(struct multiboot_info_header* mboot_header) {
     struct multiboot_tag* tag = (struct multiboot_tag*)((multiboot_uint8_t*)mboot_header + sizeof(struct multiboot_info_header));
 
-    log_astr("\n\nMULTIBOOT_INFO_HEADER");
+    log_astr("\n\nMULTIBOOT_INFO_HEADER: "); log_num((unsigned int)mboot_header);
     log_endl();
     block_start();
     while(tag && tag->type != MULTIBOOT_TAG_TYPE_END) {

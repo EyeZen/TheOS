@@ -87,6 +87,12 @@ void print_set_color(uint8_t foreground, uint8_t background) {
 void print_num(uint32_t n) {
     uint32_t n0 = n;
     uint32_t n1 = 0;
+
+    if(n == 0) {
+        print_char('0');
+        return;
+    }
+
     while(n0) {
         n1 = n1 * 10 + (n0 % 10);
         n0 /= 10;
