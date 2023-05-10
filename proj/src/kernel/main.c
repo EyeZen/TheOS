@@ -4,8 +4,8 @@
 #include "Logging.h"
 #include "IDT.h"
 #include "PMM.h"
-
-extern uint64_t page_table_l4[];
+#include "MEM.h"
+#include "VMM.h"
 
 // called inside main64.asm
 void kernel_main(struct multiboot_info_header* mboot_header) {
@@ -14,15 +14,18 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
     print_str("Welcome to our 64-bit kernel\n");
 	
 	init_serial();
+
 	log_mbheader(mboot_header);
 
-	log_page_table(page_table_l4);
-
 	init_idt();
-	// pmm_setup(mboot_header);
 
-	/* Uncomment Below Lines to generate dummy Interrupt */
-	// char* val = (char*)0x200000;
-	// print_str("\nMemory Byte: ");
-	// print_num((uint32_t)*val);
+	pmm_setup(mboot_header);
+
+	char* some_far_away_addr = (char*)0x800000;
+
+	some_far_away_addr = (char*)map_vaddress(some_far_away_addr, 0);
+
+	*some_far_away_addr = 5;
+
+	log_page_table((uint64_t*)(SIGN_EXTENSION | ENTRIES_TO_ADDRESS(511L, 511L, 511L, 511L)));
 }

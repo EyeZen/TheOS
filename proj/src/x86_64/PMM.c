@@ -1,14 +1,11 @@
 #include "PMM.h"
 #include "utils.h"
 #include "multiboot.h"
-
 #include "Logging.h"
-
 
 // TODO: map bitmap frame in physical memory
 void pmm_setup(struct multiboot_info_header* mbi_header)
 {
-    log_str("\npmm_setup\n");
     // mb-header loaded roughly at above 1MB memory, in uppor region
     // assuming everything in lower region and memory hole as reserved
     size_t lower_limit = (size_t)mbi_header + mbi_header->total_size;
@@ -52,14 +49,10 @@ void pmm_setup(struct multiboot_info_header* mbi_header)
         return;
     }
 
-    log_str("\nallocate bitmap");
     // allocate bitmap, mark all memory available
     for(size_t i = 0; i < phys_mem.frame_count; i++) {
-        log_str("\n[addr]:");
-        log_num((uint64_t)(phys_mem.bitmap.memory_map + i));
         phys_mem.bitmap.memory_map[i] = 0;
     }
-    log_str("\nlog kernel area used");
     // mark kernel area used
     size_t kernel_frames_count = lower_limit / FRAME_SIZE;
     if(lower_limit != 0) {
@@ -75,17 +68,16 @@ void pmm_setup(struct multiboot_info_header* mbi_header)
     phys_mem.bitmap.memory_map[j] = ~(~(0ul) << COL_INDEX(kernel_frames_count));
     phys_mem.frames_used = kernel_frames_count;
 
-    log_str("\npmm_reserve_area");    
     // mark bitmap area used
     pmm_reserve_area((uint64_t)phys_mem.bitmap.memory_map, bitmap_size_in_bytes);
 
-    size_t max_frame = 0;
-    for(size_t i=0; i < phys_mem.frame_count; i++) {
-        if(_bitmap_test_bit(i)) max_frame = i;
-    }
+    // size_t max_frame = 0;
+    // for(size_t i=0; i < phys_mem.frame_count; i++) {
+    //     if(_bitmap_test_bit(i)) max_frame = i;
+    // }
 
-    log_str("\nMaximum Frame Address: ");
-    log_num(FRAME_ADDRESS(max_frame));
+    // log_str("\nMaximum Frame Address: ");
+    // log_num(FRAME_ADDRESS(max_frame));
 }
 
 /**

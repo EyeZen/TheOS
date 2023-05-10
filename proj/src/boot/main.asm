@@ -1,5 +1,4 @@
 global start
-global page_table_l4
 extern long_mode_start
 
 section .text
@@ -114,6 +113,12 @@ setup_page_tables:
     or eax, 0b11    ; present, writable
     mov [page_table_l2], eax    ; first entry
 
+    ; page table 2
+    mov eax, page_table_l1
+    add eax, (512 * 8)
+    or eax, 0b11
+    mov [page_table_l2 + 8], eax
+
     mov ecx, 0  ; counter
 .loop:
     mov eax, 0x1000 ; 4KiB
@@ -122,7 +127,7 @@ setup_page_tables:
     mov [page_table_l1 + ecx * 8], eax
 
     inc ecx     ; increment counter
-    cmp ecx, 512; check if whole Level-2 table is mapped
+    cmp ecx, (512 * 2); check if whole Level-2 table is mapped
     jne .loop ; if not, continue
 
 ;
@@ -199,8 +204,8 @@ page_table_l3:
     resb 4096
 page_table_l2:
     resb 4096
-page_table_l1:
-    resb 4096
+page_table_l1:  ; 2 page-tables
+    resb 4096 * 2
 stack_bottom:
     resb 4096 * 4   ; reserve 16KB for stack
 stack_top:

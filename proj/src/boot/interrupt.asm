@@ -42,6 +42,7 @@ interrupt_stub:
 
     iret
 
+
 align 16
 global vector_0_handler
 vector_0_handler:
@@ -115,7 +116,7 @@ vector_8_handler:
     push 8
     jmp interrupt_stub
 
-; align 16
+align 16
 vector_9_handler:
     ; vector number
     push 9

@@ -21,6 +21,8 @@ x86_64_object_files := $(x86_64_c_object_files) $(x86_64_asm_object_files)
 
 all: $(PROJECT).bin verify
 
+run: all iso emu-iso 
+
 $(kernel_object_files): build/obj/kernel/%.o : proj/src/kernel/%.c
 	@mkdir -p $(dir $@) && \
 	$(CC) -c -I proj/include $(CFLAGS) $(patsubst build/obj/kernel/%.o, proj/src/kernel/%.c, $@) -o $@

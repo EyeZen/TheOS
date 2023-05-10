@@ -10,12 +10,12 @@
 int init_serial();
 
 void log_char(char ch);
-void log_str(char *string);
-void log_num(unsigned int num);
+void log_str(const char *string);
+void log_num(uint64_t num);
 
 void log_achar(char ch);
-void log_astr(char *string);
-void log_anum(unsigned int num);
+void log_astr(const char *string);
+void log_anum(uint64_t num);
 
 void log_tag(struct multiboot_tag* tag);
 void log_mbheader(struct multiboot_info_header* mboot_header);

@@ -41,6 +41,45 @@ static const char *exception_names[] = {
   "Reserved"
 };
 
+static const char* multiboot_tag_type[22] = {
+    "MULTIBOOT_TAG_TYPE_END",
+    "MULTIBOOT_TAG_TYPE_CMDLINE",
+    "MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME",
+    "MULTIBOOT_TAG_TYPE_MODULE",
+    "MULTIBOOT_TAG_TYPE_BASIC_MEMINFO",
+    "MULTIBOOT_TAG_TYPE_BOOTDEV",
+    "MULTIBOOT_TAG_TYPE_MMAP",
+    "MULTIBOOT_TAG_TYPE_VBE",
+    "MULTIBOOT_TAG_TYPE_FRAMEBUFFER",
+    "MULTIBOOT_TAG_TYPE_ELF_SECTIONS",
+    "MULTIBOOT_TAG_TYPE_APM",
+    "MULTIBOOT_TAG_TYPE_EFI32",
+    "MULTIBOOT_TAG_TYPE_EFI64",
+    "MULTIBOOT_TAG_TYPE_SMBIOS",
+    "MULTIBOOT_TAG_TYPE_ACPI_OLD",
+    "MULTIBOOT_TAG_TYPE_ACPI_NEW",
+    "MULTIBOOT_TAG_TYPE_NETWORK",
+    "MULTIBOOT_TAG_TYPE_EFI_MMAP",
+    "MULTIBOOT_TAG_TYPE_EFI_BS",
+    "MULTIBOOT_TAG_TYPE_EFI32_IH",
+    "MULTIBOOT_TAG_TYPE_EFI64_IH",
+    "MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR",
+};
+
+static const char* multiboot_mmap_entry_type[6] = {
+    "",
+    "MULTIBOOT_MEMORY_AVAILABLE",              // 1
+    "MULTIBOOT_MEMORY_RESERVED",               // 2
+    "MULTIBOOT_MEMORY_ACPI_RECLAIMABLE",       // 3
+    "MULTIBOOT_MEMORY_NVS",                    // 4
+    "MULTIBOOT_MEMORY_BADRAM"                  // 5
+};
+
+static const char* multiboot_framebuffer_type[3] = {
+    "MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED",
+    "MULTIBOOT_FRAMEBUFFER_TYPE_RGB",
+    "MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT",
+};
 
 
 inline unsigned char in(int portnum)
@@ -65,7 +104,7 @@ void block_align() {
     }
 }
 
-void log_astr(char* string) {
+void log_astr(const char* string) {
     block_align();
     log_str(string);
 }
@@ -73,7 +112,7 @@ void log_achar(char ch) {
     block_align();
     log_char(ch);
 }
-void log_anum(unsigned int num) {
+void log_anum(uint64_t num) {
     block_align();
     log_num(num);
 }
@@ -116,15 +155,15 @@ void log_char(char ch) {
     out(PORT, ch);
 }
 
-void log_str(char *string) {
+void log_str(const char *string) {
     while(*string) {
         log_char(*string++);
     }
 }
 
-void log_num(unsigned int num) {
-    unsigned int n0 = num, n1=0;
-    unsigned int dig = 0;
+void log_num(uint64_t num) {
+    uint64_t n0 = num, n1=0;
+    uint64_t dig = 0;
 
     if(num == 0) {
         out(PORT, '0');
@@ -149,7 +188,7 @@ void log_endl() { log_char('\n'); }
 void log_page_table(uint64_t* pml4t) 
 {
 	log_astr("Page Table\n");
-	log_astr("PML4T:"); log_num((unsigned int)pml4t); log_endl();
+	log_astr("PML4T:"); log_num((uint64_t)pml4t); log_endl();
 	block_start();
 	// Level 4: PML4T Traversal
 	for(int itr_pml4 = 0; itr_pml4 < 512; itr_pml4++) {
@@ -164,7 +203,7 @@ void log_page_table(uint64_t* pml4t)
             }
 
 			log_astr("PDPR_");log_num(itr_pml4);log_str(": ");
-			log_num(pml4t[itr_pml4]);log_char(':'); log_num((unsigned int)pdprt);
+			log_num(pml4t[itr_pml4]);log_char(':'); log_num((uint64_t)pdprt);
             log_endl();
 
             block_start();
@@ -181,7 +220,7 @@ void log_page_table(uint64_t* pml4t)
                     }
 
                     log_astr("PD_");log_num(itr_pdpr);log_str(": ");
-                    log_num(pdprt[itr_pdpr]);log_char(':'); log_num((unsigned int)pdt);
+                    log_num(pdprt[itr_pdpr]);log_char(':'); log_num((uint64_t)pdt);
                     log_endl();
 
                     block_start();
@@ -198,7 +237,7 @@ void log_page_table(uint64_t* pml4t)
                             }
 
                             log_astr("PT_");log_num(itr_pdt);log_str(": ");
-                            log_num(pdt[itr_pdt]);log_char(':'); log_num((unsigned int)pt);
+                            log_num(pdt[itr_pdt]);log_char(':'); log_num((uint64_t)pt);
                             log_endl();
 
                             block_start();
@@ -215,7 +254,7 @@ void log_page_table(uint64_t* pml4t)
                                     }
 
                                     log_astr("Page_");log_num(itr_pt);log_str(":");
-                                    log_num(pt[itr_pt]);log_char(':'); log_num((unsigned int)page);
+                                    log_num(pt[itr_pt]);log_char(':'); log_num((uint64_t)page);
                                     log_endl();
                                 }
                             }
@@ -234,45 +273,6 @@ void log_page_table(uint64_t* pml4t)
 
 void log_tag(struct multiboot_tag* tag) 
 {
-    const char* multiboot_tag_type[22] = {
-        "MULTIBOOT_TAG_TYPE_END",
-        "MULTIBOOT_TAG_TYPE_CMDLINE",
-        "MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME",
-        "MULTIBOOT_TAG_TYPE_MODULE",
-        "MULTIBOOT_TAG_TYPE_BASIC_MEMINFO",
-        "MULTIBOOT_TAG_TYPE_BOOTDEV",
-        "MULTIBOOT_TAG_TYPE_MMAP",
-        "MULTIBOOT_TAG_TYPE_VBE",
-        "MULTIBOOT_TAG_TYPE_FRAMEBUFFER",
-        "MULTIBOOT_TAG_TYPE_ELF_SECTIONS",
-        "MULTIBOOT_TAG_TYPE_APM",
-        "MULTIBOOT_TAG_TYPE_EFI32",
-        "MULTIBOOT_TAG_TYPE_EFI64",
-        "MULTIBOOT_TAG_TYPE_SMBIOS",
-        "MULTIBOOT_TAG_TYPE_ACPI_OLD",
-        "MULTIBOOT_TAG_TYPE_ACPI_NEW",
-        "MULTIBOOT_TAG_TYPE_NETWORK",
-        "MULTIBOOT_TAG_TYPE_EFI_MMAP",
-        "MULTIBOOT_TAG_TYPE_EFI_BS",
-        "MULTIBOOT_TAG_TYPE_EFI32_IH",
-        "MULTIBOOT_TAG_TYPE_EFI64_IH",
-        "MULTIBOOT_TAG_TYPE_LOAD_BASE_ADDR",
-    };
-
-    const char* multiboot_mmap_entry_type[6] = {
-        "",
-        "MULTIBOOT_MEMORY_AVAILABLE",              // 1
-        "MULTIBOOT_MEMORY_RESERVED",               // 2
-        "MULTIBOOT_MEMORY_ACPI_RECLAIMABLE",       // 3
-        "MULTIBOOT_MEMORY_NVS",                    // 4
-        "MULTIBOOT_MEMORY_BADRAM"                  // 5
-    };
-    
-    const char* multiboot_framebuffer_type[3] = {
-        "MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED",
-        "MULTIBOOT_FRAMEBUFFER_TYPE_RGB",
-        "MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT",
-    };
 
     // reset_block();
 
@@ -381,7 +381,7 @@ void log_tag(struct multiboot_tag* tag)
 void log_mbheader(struct multiboot_info_header* mboot_header) {
     struct multiboot_tag* tag = (struct multiboot_tag*)((multiboot_uint8_t*)mboot_header + sizeof(struct multiboot_info_header));
 
-    log_astr("\n\nMULTIBOOT_INFO_HEADER: "); log_num((unsigned int)mboot_header);
+    log_astr("\n\nMULTIBOOT_INFO_HEADER: "); log_num((uint64_t)mboot_header);
     log_endl();
     block_start();
     while(tag && tag->type != MULTIBOOT_TAG_TYPE_END) {
