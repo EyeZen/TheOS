@@ -3,6 +3,32 @@
 
 #include <stdint.h>
 
+#define INTR_DIVIDE_ERROR 0
+#define INTR_DEBUG_EXC 1
+#define INTR_NMI_INTERRUPT 2
+#define INTR_BREAKPOINT 3
+#define INTR_OVERFLOW 4
+#define INTR_BOUND_RANGE_EXCEED 5
+#define INTR_INVALID_OPCODE 6
+#define INTR_DEV_NOT_AVL 7
+#define INTR_DOUBLE_FAULT 8
+#define INTR_COPROC_SEG_OVERRUN 9
+#define INTR_INVALID_TSS 10
+#define INTR_SEGMENT_NOT_PRESENT 11
+#define INTR_STACK_SEGMENT_FAULT 12
+#define INTR_GENERAL_PROTECTION 13
+#define INTR_PAGE_FAULT 14
+#define INTR_INT_RSV 15
+#define INTR_FLOATING_POINT_ERR 16
+#define INTR_ALIGNMENT_CHECK 17
+#define INTR_MACHINE_CHECK 18
+#define INTR_SIMD_FP_EXC 19
+#define INTR_APIC_TIMER_INTERRUPT 32
+#define INTR_KEYBOARD_INTERRUPT 33
+#define INTR_PIT_INTERRUPT 34
+#define INTR_APIC_SPURIOUS_INTERRUPT 255
+
+
 struct interrupt_descriptor
 {
     uint16_t address_low;
@@ -49,7 +75,7 @@ struct cpu_status_t
 };
 
 
-void load_idt(void* idt_addr);
+void load_idt();
 
 void init_idt();
 

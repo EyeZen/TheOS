@@ -1,8 +1,47 @@
 #include "Logging.h"
 #include "utils.h"
+#include "IDT.h"
 #include "RSDP.h"
 
 #define PAGE_FRAME_ADDRESS(page_frame) (page_frame & 0x000FFFFFFFFFF000)
+
+
+static const char *exception_names[] = {
+  "Divide by Zero Error",
+  "Debug",
+  "Non Maskable Interrupt",
+  "Breakpoint",
+  "Overflow",
+  "Bound Range",
+  "Invalid Opcode",
+  "Device Not Available",
+  "Double Fault",
+  "Coprocessor Segment Overrun",
+  "Invalid TSS",
+  "Segment Not Present",
+  "Stack-Segment Fault",
+  "General Protection Fault",
+  "Page Fault",
+  "Reserved",
+  "x87 Floating-Point Exception",
+  "Alignment Check",
+  "Machine Check",
+  "SIMD Floating-Point Exception",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Reserved",
+  "Security Exception",
+  "Reserved"
+};
+
+
 
 inline unsigned char in(int portnum)
 {
@@ -351,3 +390,89 @@ void log_mbheader(struct multiboot_info_header* mboot_header) {
     }
     block_end();
 } 
+
+void log_interrupt(struct cpu_status_t* context)
+{
+    log_astr("Interrupt: "); log_astr(exception_names[context->vector_number]);
+    log_endl();
+
+    block_start();
+    log_astr("Vector#: "); log_num(context->vector_number); log_endl();
+    switch(context->vector_number) {
+        case INTR_DIVIDE_ERROR: {
+
+        } break;
+        case INTR_DEBUG_EXC: {
+
+        } break;
+        case INTR_NMI_INTERRUPT: {
+
+        } break;
+        case INTR_BREAKPOINT: {
+
+        } break;
+        case INTR_OVERFLOW: {
+
+        } break;
+        case INTR_BOUND_RANGE_EXCEED: {
+
+        } break;
+        case INTR_INVALID_OPCODE: {
+
+        } break;
+        case INTR_DEV_NOT_AVL: {
+
+        } break;
+        case INTR_DOUBLE_FAULT: {
+
+        } break;
+        case INTR_COPROC_SEG_OVERRUN: {
+
+        } break;
+        case INTR_INVALID_TSS: {
+
+        } break;
+        case INTR_SEGMENT_NOT_PRESENT: {
+
+        } break;
+        case INTR_STACK_SEGMENT_FAULT: {
+
+        } break;
+        case INTR_GENERAL_PROTECTION: {
+
+        } break;
+        case INTR_PAGE_FAULT: {
+
+        } break;
+        case INTR_INT_RSV: {
+
+        } break;
+        case INTR_FLOATING_POINT_ERR: {
+
+        } break;
+        case INTR_ALIGNMENT_CHECK: {
+
+        } break;
+        case INTR_MACHINE_CHECK: {
+
+        } break;
+        case INTR_SIMD_FP_EXC: {
+
+        } break;
+        case INTR_APIC_TIMER_INTERRUPT: {
+
+        } break;
+        case INTR_KEYBOARD_INTERRUPT: {
+
+        } break;
+        case INTR_PIT_INTERRUPT: {
+
+        } break;
+        case INTR_APIC_SPURIOUS_INTERRUPT: {
+            
+        } break;
+        default: 
+            log_astr("Undefined Interrupt");
+    }
+    block_end();
+}

@@ -20,11 +20,9 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 
 	init_idt();
 	// pmm_setup(mboot_header);
+
+	/* Uncomment Below Lines to generate dummy Interrupt */
 	// char* val = (char*)0x200000;
 	// print_str("\nMemory Byte: ");
 	// print_num((uint32_t)*val);
-
-	uint64_t**** pml4t = (uint64_t****)page_table_l4;
-
-	print_num((uint32_t)pml4t[511]);
 }

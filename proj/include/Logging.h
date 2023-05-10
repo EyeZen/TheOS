@@ -3,6 +3,7 @@
 
 #include "multiboot.h"
 #include <stdint.h>
+#include "IDT.h"
 
 #define PORT 0x3f8
 
@@ -19,6 +20,7 @@ void log_anum(unsigned int num);
 void log_tag(struct multiboot_tag* tag);
 void log_mbheader(struct multiboot_info_header* mboot_header);
 void log_page_table(uint64_t* pml4t);
+void log_interrupt(struct cpu_status_t* context);
 
 void block_start();
 void block_end();
