@@ -17,9 +17,15 @@ x86_64_c_object_files := $(patsubst proj/src/x86_64/%.c, build/obj/x86_64/%.o, $
 x86_64_asm_source_files := $(shell find proj/src/boot -name *.asm)
 x86_64_asm_object_files := $(patsubst proj/src/boot/%.asm, build/obj/boot/%.o, $(x86_64_asm_source_files))
 
-x86_64_object_files := $(x86_64_c_object_files) $(x86_64_asm_object_files)
+# list of all ttf font files
+psf_font_files := $(shell find proj/res/fonts -name *.psf)
+psf_object_files := $(patsubst proj/res/fonts/%.psf, build/obj/fonts/%.o, $(psf_font_files))
 
-all: $(PROJECT).bin verify
+x86_64_object_files := $(x86_64_c_object_files) $(x86_64_asm_object_files) $(psf_object_files)
+
+
+
+all: fonts $(PROJECT).bin verify
 
 run: all iso emu-iso 
 
@@ -36,8 +42,20 @@ $(x86_64_asm_object_files): build/obj/boot/%.o : proj/src/boot/%.asm
 	$(ASM) -felf64 $(patsubst build/obj/boot/%.o, proj/src/boot/%.asm, $@) -o $@
 
 $(PROJECT).bin: $(kernel_object_files) $(x86_64_object_files)
+	@$(LD) -n -T proj/linker.ld -Map build/$(PROJECT).map $(kernel_object_files) $(x86_64_object_files)
 	@mkdir -p dist/ && \
 	$(LD) -n -T proj/linker.ld -o dist/$(PROJECT).bin $(kernel_object_files) $(x86_64_object_files)
+
+fonts: $(psf_object_files)
+	@# @readelf -Ws build/obj/fonts/Quicksand-Regular.o
+	@# @readelf -Wh build/obj/fonts/Quicksand-Regular.o
+
+# $(psf_font_files): proj/res/fonts/%.psf : proj/res/fonts/%.ttf
+# 	@fontforge -lang=ff -c 'Open($$1); Generate($$2)' $< $@
+
+$(psf_object_files): build/obj/fonts/%.o : proj/res/fonts/%.psf
+	@mkdir -p build/obj/fonts
+	@objcopy -O elf64-x86-64 -B i386:x86-64 -I binary $< $@
 
 verify:
 	@if grub-file --is-x86-multiboot2 dist/$(PROJECT).bin; then \

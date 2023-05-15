@@ -1,6 +1,7 @@
 #include "IDT.h"
 
 #include "Logging.h"
+#include "print.h"
 #include <stddef.h>
 
 extern char vector_0_handler[];
@@ -40,10 +41,13 @@ void init_idt()
 	load_idt();
 }
 
+
 void interrupt_dispatch(struct cpu_status_t* context)
 {
     log_interrupt(context);
-    // while(1) asm volatile("hlt");
+    log_heap();
+    kprintf("\nHalted");
+    while(1) asm volatile("hlt");
     switch(context->vector_number) {
         case INTR_DIVIDE_ERROR: {
 

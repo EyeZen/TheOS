@@ -4,6 +4,7 @@ SECTIONS
 {
     . = 1M;
 
+    _kernel_start = .;
     .boot BLOCK(4K) : ALIGN(4K)
     {
         KEEP(*(.multiboot_header))
@@ -18,4 +19,6 @@ SECTIONS
     {
         *(.bss)
     }
+
+    _kernel_end = .;
 }

@@ -29,6 +29,12 @@
 #define INTR_APIC_SPURIOUS_INTERRUPT 255
 
 
+#define PF_PRESENT              (1 << 0)
+#define PF_WRITE                (1 << 1)
+#define PF_USER                 (1 << 2)
+#define PF_INSTRUCTION_FETCH    (1 << 4)
+
+
 struct interrupt_descriptor
 {
     uint16_t address_low;

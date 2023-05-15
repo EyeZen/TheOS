@@ -1,5 +1,5 @@
-#ifndef _MEM_H
-#define _MEM_H
+#ifndef _MEMORY_H
+#define _MEMORY_H
 
 #define PAGE_SIZE 0x1000              // 4KiB
 
@@ -26,10 +26,6 @@
 
 #define VM_OFFSET_MASK 0xFFFFFFFFFFFFF000
 #define PAGE_ENTRY_FLAGS PRESENT_BIT | WRITE_BIT
-
-#define KiB 0x400L
-#define MiB (KiB * KiB)
-#define GiB (KiB * KiB * KiB)
 
 #include <stdint.h>
 

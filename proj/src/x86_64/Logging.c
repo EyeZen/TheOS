@@ -2,9 +2,13 @@
 #include "utils.h"
 #include "IDT.h"
 #include "RSDP.h"
+#include "KHeap.h"
+#include "Fonts.h"
+
+
+// #define PORT 0x3f8
 
 #define PAGE_FRAME_ADDRESS(page_frame) (page_frame & 0x000FFFFFFFFFF000)
-
 
 static const char *exception_names[] = {
   "Divide by Zero Error",
@@ -82,113 +86,33 @@ static const char* multiboot_framebuffer_type[3] = {
 };
 
 
-inline unsigned char in(int portnum)
-{
-    unsigned char data=0;
-    __asm__ __volatile__ ("inb %%dx, %%al" : "=a" (data) : "d" (portnum));       
-    return data;
-}
-
-inline void out(int portnum, unsigned char data)
-{
-    __asm__ __volatile__ ("outb %%al, %%dx" :: "a" (data),"d" (portnum));        
-}
-
-
 int _block_level_count = 0;
 
 void reset_block() { _block_level_count = 0; }
 void block_align() {
+
     for(int blk = 0; blk < _block_level_count; blk++) {
-        log_char('\t');
+        logf("\t");
     }
 }
 
-void log_astr(const char* string) {
-    block_align();
-    log_str(string);
-}
-void log_achar(char ch) {
-    block_align();
-    log_char(ch);
-}
-void log_anum(uint64_t num) {
-    block_align();
-    log_num(num);
-}
-
 void block_start() {
-    log_astr("{\n"); 
+    logfa("{\n"); 
     _block_level_count++; 
 }
 void block_end() { 
     _block_level_count--; 
     // log_char('\n');
-    log_astr("}\n");
+    logfa("}\n");
 }
 
-
-
-int init_serial() {
-    out(PORT + 1, 0x00);    // Disable all interrupts
-    out(PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-    out(PORT + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-    out(PORT + 1, 0x00);    //                  (hi byte)
-    out(PORT + 3, 0x03);    // 8 bits, no parity, one stop bit
-    out(PORT + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold   
-    out(PORT + 4, 0x0B);    // IRQs enabled, RTS/DSR set
-    out(PORT + 4, 0x1E);    // Set in loopback mode, test the serial chip        
-    out(PORT + 0, 0xAE);    // Test serial chip (send byte 0xAE and check if serial returns same byte)
-
-    // Check if serial is faulty (i.e: not same byte as sent)
-    if(in(PORT + 0) != 0xAE) {
-        return 1;
-    }
-
-    // If serial is not faulty set it in normal operation mode
-    // (not-loopback with IRQs enabled and OUT#1 and OUT#2 bits enabled)
-    out(PORT + 4, 0x0F);
-    return 0;
-}
-
-void log_char(char ch) {
-    out(PORT, ch);
-}
-
-void log_str(const char *string) {
-    while(*string) {
-        log_char(*string++);
-    }
-}
-
-void log_num(uint64_t num) {
-    uint64_t n0 = num, n1=0;
-    uint64_t dig = 0;
-
-    if(num == 0) {
-        out(PORT, '0');
-        return;
-    }
-
-    while(n0) {
-        n1 = n1 * 10 + (n0 % 10);
-        n0 /= 10;
-        dig++;
-    }
-    while(dig--) {
-        n0 = n1 % 10;
-        n1 /= 10;
-        out(PORT, (char)('0' + n0));
-    }
-}
-
-void log_endl() { log_char('\n'); }
-
+///////////////////////////////////
 
 void log_page_table(uint64_t* pml4t) 
 {
-	log_astr("Page Table\n");
-	log_astr("PML4T:"); log_num((uint64_t)pml4t); log_endl();
+    logfa("Page Table\n");
+    logfa("PML4T: %ull\n", (uint64_t)pml4t);
+
 	block_start();
 	// Level 4: PML4T Traversal
 	for(int itr_pml4 = 0; itr_pml4 < 512; itr_pml4++) {
@@ -196,15 +120,10 @@ void log_page_table(uint64_t* pml4t)
             uint64_t* pdprt = (uint64_t*)PAGE_FRAME_ADDRESS(pml4t[itr_pml4]); // bits 51 : 12 
 
             if(pdprt == pml4t) {
-                log_astr("PDPR_");log_num(itr_pml4);log_str(": ");
-                log_str("[PML4T]");
-                log_endl();
+                logfa("PDPR_%d: [PML4T]\n", itr_pml4);
                 continue;
             }
-
-			log_astr("PDPR_");log_num(itr_pml4);log_str(": ");
-			log_num(pml4t[itr_pml4]);log_char(':'); log_num((uint64_t)pdprt);
-            log_endl();
+            logfa("PDPR_%d: %d: %ull\n", itr_pml4, pml4t[itr_pml4], (uint64_t)pdprt)
 
             block_start();
             // Level 3: PDPT Traversal
@@ -213,15 +132,11 @@ void log_page_table(uint64_t* pml4t)
                     uint64_t* pdt = (uint64_t*)PAGE_FRAME_ADDRESS(pdprt[itr_pdpr]);
 
                     if(pdt == pdprt) {
-                        log_astr("PD_");log_num(itr_pdpr);log_str(": ");
-                        log_str("[PDPR_");log_num(itr_pml4);log_char(']');
-                        log_endl();
+                        logfa("PD_%d: [PDPR_%d]\n", itr_pdpr, itr_pml4);
                         continue;
                     }
 
-                    log_astr("PD_");log_num(itr_pdpr);log_str(": ");
-                    log_num(pdprt[itr_pdpr]);log_char(':'); log_num((uint64_t)pdt);
-                    log_endl();
+                    logfa("PD_%d: %d: %ull\n", itr_pdpr, pdprt[itr_pdpr], (uint64_t)pdt);
 
                     block_start();
                     // Level 2: PDT Traversal
@@ -230,15 +145,11 @@ void log_page_table(uint64_t* pml4t)
                             uint64_t* pt = (uint64_t*)PAGE_FRAME_ADDRESS(pdt[itr_pdt]);
 
                             if(pt == pdt) {
-                                log_astr("PT_");log_num(itr_pdt);log_str(": ");
-                                log_str("[PD_");log_num(itr_pdpr);log_char(']');
-                                log_endl();
+                                logfa("PT_%d: [PD_%d]\n", itr_pdt, itr_pdpr);\
                                 continue;
                             }
 
-                            log_astr("PT_");log_num(itr_pdt);log_str(": ");
-                            log_num(pdt[itr_pdt]);log_char(':'); log_num((uint64_t)pt);
-                            log_endl();
+                            logfa("PT_%d: %d:%ull\n", itr_pdt, pdt[itr_pdt], (uint64_t)pt);
 
                             block_start();
                             // Level 1: PT Traversal
@@ -247,15 +158,10 @@ void log_page_table(uint64_t* pml4t)
                                     uint64_t* page = (uint64_t*)PAGE_FRAME_ADDRESS(pt[itr_pt]);
 
                                     if(page == pt) {
-                                        log_astr("Page_");log_num(itr_pt);log_str(":");
-                                        log_str("[PT_");log_num(itr_pdt);log_char(']');
-                                        log_endl();
+                                        logfa("Page_%d:[PT_%d]\n", itr_pt, itr_pdt);
                                         continue;
                                     }
-
-                                    log_astr("Page_");log_num(itr_pt);log_str(":");
-                                    log_num(pt[itr_pt]);log_char(':'); log_num((uint64_t)page);
-                                    log_endl();
+                                    logfa("Page_%d:%d:%ull\n", itr_pt, pt[itr_pt], (uint64_t)page);
                                 }
                             }
                             block_end();
@@ -275,51 +181,44 @@ void log_tag(struct multiboot_tag* tag)
 {
 
     // reset_block();
-
-    log_astr((char*)multiboot_tag_type[tag->type]);
-    log_endl();
-
+    logfa("%s\n", multiboot_tag_type[tag->type]);
     block_start();
-    log_astr("type: "); log_num(tag->type); log_endl();
-    log_astr("size: "); log_num(tag->size); log_endl();
+    logfa("type: %d\n", tag->type);
+    logfa("size: %d\n", tag->size);
     switch(tag->type) {
         case MULTIBOOT_TAG_TYPE_END: {
             goto log_tag_end;
         } break;
         case MULTIBOOT_TAG_TYPE_CMDLINE: {
             struct multiboot_tag_string* t_cmdline = (struct multiboot_tag_string*)tag;
-            log_astr("string: ");
-            // log_char(t_cmdline->string[0]);
-            log_str(t_cmdline->string); log_endl();
+            logfa("string: %s\n", t_cmdline->string);
         } break;
         case MULTIBOOT_TAG_TYPE_BOOT_LOADER_NAME: {
             struct multiboot_tag_string* t_loader = (struct multiboot_tag_string*)tag;
-            log_astr("string: ");
-            // log_char(t_loader->string[0]);
-            log_str(t_loader->string);                          log_endl();
+            logfa("string: %s\n", t_loader->string);
         } break;
         case MULTIBOOT_TAG_TYPE_MODULE: {
             struct multiboot_tag_module* t_mod = (struct multiboot_tag_module*)tag;
-            log_astr("mod_start: "); log_num(t_mod->mod_start); log_endl();
-            log_astr("mod_end: "); log_num(t_mod->mod_end);     log_endl();
-            log_astr("cmdline: "); log_char(t_mod->cmdline[0]); log_endl();
+            logfa("mod_start: %d\n", t_mod->mod_start); 
+            logfa("mod_end: %d\n", t_mod->mod_end); 
+            logfa("cmdline: %d\n", t_mod->cmdline[0]);
         } break;
         case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
             struct multiboot_tag_basic_meminfo* t_bmi = (struct multiboot_tag_basic_meminfo*)tag;
-            log_astr("mem_lower: "); log_num(t_bmi->mem_lower); log_endl();
-            log_astr("mem_upper: "); log_num(t_bmi->mem_upper); log_endl();
+            logfa("mem_lower: %d\n", t_bmi->mem_lower);
+            logfa("mem_upper: %d\n", t_bmi->mem_upper);
         } break;
         case MULTIBOOT_TAG_TYPE_BOOTDEV: {
             struct multiboot_tag_bootdev* t_bdev = (struct multiboot_tag_bootdev*)tag;
-            log_astr("biosdev: "); log_num(t_bdev->biosdev);     log_endl();
-            log_astr("part: "); log_num(t_bdev->part);            log_endl();
-            log_astr("slice: "); log_num(t_bdev->slice);          log_endl();
+            logfa("biosdev: \n", t_bdev->biosdev);
+            logfa("part: \n"   , t_bdev->part);
+            logfa("slice: \n"  , t_bdev->slice);
 
         } break;
         case MULTIBOOT_TAG_TYPE_MMAP: {
             struct multiboot_tag_mmap* t_mmap = (struct multiboot_tag_mmap*)tag; 
-            log_astr("entry_size: "); log_num(t_mmap->entry_size);          log_endl();
-            log_astr("entry_version: "); log_num(t_mmap->entry_version);    log_endl();
+            logfa("entry_size: %d\n", t_mmap->entry_size);
+            logfa("entry_version: %d\n", t_mmap->entry_version);
 
             struct multiboot_mmap_entry* entry = t_mmap->entries;
             for(
@@ -328,13 +227,12 @@ void log_tag(struct multiboot_tag* tag)
                 entry = (struct multiboot_mmap_entry*)((unsigned char*)entry + t_mmap->entry_size)
                 )
             {
-                log_endl();
-                log_astr("Entry:");
+                logf("\n");
+                logfa("Entry:");
                 block_start();
-                    log_astr("base_addr: "); log_num(entry->addr);          log_endl();
-                    log_astr("length: "); log_num(entry->len);              log_endl();
-                    log_astr("type: "); log_str((char*)multiboot_mmap_entry_type[entry->type]);     
-                    log_endl();
+                    logfa("base_addr: %d\n", entry->addr);
+                    logfa("length: %d\n", entry->len);
+                    logfa("type: %s\n", multiboot_mmap_entry_type[entry->type]);
                 block_end();
             }
         } break;
@@ -343,29 +241,28 @@ void log_tag(struct multiboot_tag* tag)
         } break;
         case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
             struct multiboot_tag_framebuffer* t_fb = (struct multiboot_tag_framebuffer*)tag;
-            log_astr("address: ");      log_num(t_fb->common.framebuffer_addr);     log_endl();
-            log_astr("width: ");        log_num(t_fb->common.framebuffer_width);    log_endl();
-            log_astr("height: ");       log_num(t_fb->common.framebuffer_height);   log_endl();
-            log_astr("bpp: ");          log_num(t_fb->common.framebuffer_bpp);      log_endl();
-            log_astr("pitch: ");        log_num(t_fb->common.framebuffer_pitch);    log_endl();
-            log_astr("buffer-type: ");  log_str((char*)multiboot_framebuffer_type[t_fb->common.framebuffer_type]);
-            log_endl();
+            logfa("address: %d\n", t_fb->common.framebuffer_addr);
+            logfa("width: %d\n", t_fb->common.framebuffer_width);
+            logfa("height: %d\n", t_fb->common.framebuffer_height);
+            logfa("bpp: %d\n", t_fb->common.framebuffer_bpp);
+            logfa("pitch: %d\n", t_fb->common.framebuffer_pitch);
+            logfa("buffer-type: %s\n", multiboot_framebuffer_type[t_fb->common.framebuffer_type]);
         } break;
         case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
             struct multiboot_tag_old_acpi* t_nacip = (struct multiboot_tag_old_acpi*)tag;
             struct RSDPDescriptor* rsdp_desc = (struct RSDPDescriptor*)t_nacip->rsdp; 
 
-            log_astr("RSDPDescriptor:\n");
+            logfa("RSDPDescriptor:\n");
             block_start();
-                log_astr("Signature: ");
-                    for(int i=0; i<8; i++) log_char(rsdp_desc->Signature[i]);
-                log_endl();
-                log_astr("Checksum: "); log_num(rsdp_desc->Checksum); log_endl();
-                log_astr("OEMID: ");
-                    for(int i=0; i<6; i++) log_char(rsdp_desc->OEMID[i]);
-                log_endl();
-                log_astr("Revision: "); log_num(rsdp_desc->Revision); log_endl();
-                log_astr("RSDTAddress: "); log_num(rsdp_desc->RSDTAddress); log_endl();
+                logfa("Signature: ");
+                    for(int i=0; i<8; i++) logf("%c", rsdp_desc->Signature[i]);
+                logf("\n");
+                logfa("Checksum: %d\n", rsdp_desc->Checksum);
+                logfa("OEMID: ");
+                    for(int i=0; i<6; i++) logf("%c", rsdp_desc->OEMID[i]);
+                logf("\n");
+                logfa("Revision: %d\n", rsdp_desc->Revision);
+                logfa("RSDTAddress: %d\n", rsdp_desc->RSDTAddress);
             block_end();
 
         } break;
@@ -381,8 +278,7 @@ void log_tag(struct multiboot_tag* tag)
 void log_mbheader(struct multiboot_info_header* mboot_header) {
     struct multiboot_tag* tag = (struct multiboot_tag*)((multiboot_uint8_t*)mboot_header + sizeof(struct multiboot_info_header));
 
-    log_astr("\n\nMULTIBOOT_INFO_HEADER: "); log_num((uint64_t)mboot_header);
-    log_endl();
+    logfa("\n\nMULTIBOOT_INFO_HEADER: %ull\n", (uint64_t)mboot_header);
     block_start();
     while(tag && tag->type != MULTIBOOT_TAG_TYPE_END) {
         log_tag(tag);
@@ -391,13 +287,38 @@ void log_mbheader(struct multiboot_info_header* mboot_header) {
     block_end();
 } 
 
+void log_context(struct cpu_status_t* context) {
+    logfa("CPU-Context:\n");
+    block_start();
+        logfa("r15: %ull\n",        (uint64_t)context->r15);
+        logfa("r14: %ull\n",        (uint64_t)context->r14);
+        logfa("r13: %ull\n",        (uint64_t)context->r13);
+        logfa("r12: %ull\n",        (uint64_t)context->r12);
+        logfa("r11: %ull\n",        (uint64_t)context->r11);
+        logfa("r10: %ull\n",        (uint64_t)context->r10);
+        logfa("r9: %ull\n",         (uint64_t)context->r9);
+        logfa("r8: %ull\n",         (uint64_t)context->r8);
+        logfa("rbp: %ull\n",        (uint64_t)context->rbp);
+        logfa("rdi: %ull\n",        (uint64_t)context->rdi);
+        logfa("rsi: %ull\n",        (uint64_t)context->rsi);
+        logfa("rdx: %ull\n",        (uint64_t)context->rdx);
+        logfa("rcx: %ull\n",        (uint64_t)context->rcx);
+        logfa("rbx: %ull\n",        (uint64_t)context->rbx);
+        logfa("rax: %ull\n",        (uint64_t)context->rax);
+        logfa("iret_rip: %ull\n",   (uint64_t)context->iret_rip);
+        logfa("iret_cs: %ull\n",    (uint64_t)context->iret_cs);
+        logfa("iret_flags: %ull\n", (uint64_t)context->iret_flags);
+        logfa("iret_rsp: %ull\n",   (uint64_t)context->iret_rsp);
+        logfa("iret_ss: %ull\n",    (uint64_t)context->iret_ss);
+    block_end();
+}
+
 void log_interrupt(struct cpu_status_t* context)
 {
-    log_astr("Interrupt: "); log_astr(exception_names[context->vector_number]);
-    log_endl();
-
+    logfa("Interrupt: %s\n", exception_names[context->vector_number]);
     block_start();
-    log_astr("Vector#: "); log_num(context->vector_number); log_endl();
+    logfa("Vector#: %d\n", context->vector_number);
+    log_context(context);
     switch(context->vector_number) {
         case INTR_DIVIDE_ERROR: {
 
@@ -442,6 +363,14 @@ void log_interrupt(struct cpu_status_t* context)
 
         } break;
         case INTR_PAGE_FAULT: {
+            logfa("PF_ERROR_CODE:");
+            block_start();
+                if(context->error_code & PF_PRESENT) logfa("PRESENT ");
+                if(context->error_code & PF_WRITE) logfa("WRITE");
+                if(context->error_code & PF_INSTRUCTION_FETCH) logfa("INSPF_INSTRUCTION_FETCH");
+                if(context->error_code & PF_USER) logfa("USPF_USER");
+                logf("\n");
+            block_end();
 
         } break;
         case INTR_INT_RSV: {
@@ -472,7 +401,90 @@ void log_interrupt(struct cpu_status_t* context)
             
         } break;
         default: 
-            log_astr("Undefined Interrupt");
+            logfa("Undefined Interrupt");
     }
+    block_end();
+}
+
+void log_heap() {
+    struct KHeapNode* node = kheap_start;
+    int node_idx=0;
+
+    logfa("KHeap:\n");
+    block_start();
+    while(node != NULL) {
+        logfa("node_%d[%ull]\n", node_idx, (uint64_t)node); 
+        block_start();
+            if(node == kheap_start) { logfa("*heap-start\n"); }
+            else {
+                logfa("heap-start: %ull\n", (uint64_t)kheap_start);
+            }
+
+            if(node == kheap_end) { logfa("*heap-end\n"); }
+            else {
+                logfa("heap-end: %ull\n", (uint64_t)kheap_end);
+            }
+            if(node == kheap_curr) logfa("*current\n");
+
+            logfa("size: %d\n", node->size);
+            logfa("free: ");
+            if(node->free) { logf("true\n"); }
+            else logf("false\n");
+
+            logfa("prev: ");
+            if(node->prev == NULL){ logf("NULL\n"); }
+            else logf("%ull\n", (uint64_t)(node->prev));
+
+            logfa("next: ");
+            if(node->next == NULL){ logf("NULL\n"); }
+            else logf("%ull\n", (uint64_t)(node->next));
+        block_end();
+
+        node = node->next;
+        node_idx++;
+    }
+    block_end();
+}
+
+void log_glyph(char symbol, Font* font) {
+    uint8_t* glyph = (uint8_t*)get_glyph(symbol, font);
+    uint32_t row_bytes = (font->glyph_width + 7) / 8;
+    logf("%c\n", symbol);
+    block_start();
+    for(uint32_t y=0; y<font->glyph_height; y++) {
+        logf(" ");
+        for(uint32_t x=0; x < font->glyph_width; x++) {
+            if(glyph[x/8] & (0x80 >> (x & 7))) {
+                logf("1");
+            } else {
+                logf("0");
+            }
+        }
+        logf("\n");
+        glyph += row_bytes;
+    }
+    block_end();
+}
+
+void log_font_header(uint64_t font_start_address)
+{
+    logfa("Font:");
+    block_start();
+
+    uint8_t* font_ptr = (uint8_t*)font_start_address;
+    if(*(uint16_t*)font_ptr == (uint16_t)PSF1_MAGIC)
+    {
+        logfa("Version: PSF1\n");
+    }
+    else if(*(uint32_t*)font_ptr == (uint32_t)PSF2_MAGIC) 
+    {
+        logfa("Version: PSF2\n");
+    }
+    else 
+    {
+        logfa("Version: Unknown\n");
+    }
+    logfa("Magic: %ul\n", *(uint32_t*)font_ptr);
+
     block_end();
 }

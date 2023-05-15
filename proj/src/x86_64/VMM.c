@@ -52,8 +52,7 @@ void *map_vaddress(void *virtual_address, unsigned int flags)
 void map_vaddress_range(void *virtual_address, unsigned int flags, size_t required_pages)
 {
     for(size_t i = 0; i < required_pages; i++) {
-        int8_t* page_address = (int8_t*)virtual_address + (i * PAGE_SIZE);
-        map_vaddress((void*)page_address, flags);
+        map_vaddress((void*)(virtual_address + (i * PAGE_SIZE)), flags);
     }
 }
 

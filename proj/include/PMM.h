@@ -28,7 +28,8 @@ struct PMM_t {
     struct multiboot_mmap_entry* entries;
     size_t entries_count;
 
-} phys_mem;
+};
+extern struct PMM_t phys_mem;
 
 void pmm_setup(struct multiboot_info_header* mbi_header);
 void _map_pmm();

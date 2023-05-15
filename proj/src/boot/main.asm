@@ -138,23 +138,23 @@ setup_page_tables:
     mov ecx, 511
     mov [page_table_l4 + ecx * 8], eax
 
-    ; map pdpr table into itself at 511
-    mov eax, page_table_l3
-    or eax, 0b11
-    mov ecx, 511
-    mov [page_table_l3 + ecx * 8], eax
+    ; ; map pdpr table into itself at 511
+    ; mov eax, page_table_l3
+    ; or eax, 0b11
+    ; mov ecx, 511
+    ; mov [page_table_l3 + ecx * 8], eax
     
-    ; map pd table into itself at 511
-    mov eax, page_table_l2
-    or eax, 0b11
-    mov ecx, 511
-    mov [page_table_l2 + ecx * 8], eax
+    ; ; map pd table into itself at 511
+    ; mov eax, page_table_l2
+    ; or eax, 0b11
+    ; mov ecx, 511
+    ; mov [page_table_l2 + ecx * 8], eax
     
-    ; map page table into itself at 511
-    mov eax, page_table_l1
-    or eax, 0b11
-    mov ecx, 511
-    mov [page_table_l1 + ecx * 8], eax
+    ; ; map page table into itself at 511
+    ; mov eax, page_table_l1
+    ; or eax, 0b11
+    ; mov ecx, 511
+    ; mov [page_table_l1 + ecx * 8], eax
 
     ret
 

@@ -3,6 +3,8 @@
 #include "multiboot.h"
 #include "Logging.h"
 
+struct PMM_t phys_mem;
+
 // TODO: map bitmap frame in physical memory
 void pmm_setup(struct multiboot_info_header* mbi_header)
 {
@@ -45,7 +47,7 @@ void pmm_setup(struct multiboot_info_header* mbi_header)
     }
 
     if(phys_mem.bitmap.memory_map == NULL) {
-        log_str("\nNo memory available for pmm bitmap!");
+        logf("\nNo memory available for pmm bitmap!");
         return;
     }
 

@@ -1,7 +1,7 @@
 /*  GIMP header image file format (RGB): C:\Users\micro\Downloads\Pictures\twitter_logo.h  */
 
-static unsigned int width = 225;
-static unsigned int height = 225;
+static unsigned int twitter_logo_width = 225;
+static unsigned int twitter_logo_height = 225;
 
 /*  Call this macro repeatedly.  After each use, the pixel data can be extracted  */
 
