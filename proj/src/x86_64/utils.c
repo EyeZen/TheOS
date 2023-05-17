@@ -1,5 +1,5 @@
 #include "utils.h"
-
+#include "VMM.h"
 #include <stddef.h>
 
 struct multiboot_tag* find_tag(struct multiboot_info_header* mb_info_start, uint32_t type) 
@@ -21,36 +21,74 @@ struct multiboot_tag* find_next(struct multiboot_tag* current)
 	return tag;
 }
 
+// no support for RSDPDescriptorV2 or XSDT
+struct SDTHeader* find_sdt(struct multiboot_info_header* mboot_header, const char* signature) {
+	struct multiboot_tag_old_acpi* acpi = (struct multiboot_tag_old_acpi*)find_tag(mboot_header, MULTIBOOT_TAG_TYPE_ACPI_OLD);
+	struct RSDPDescriptor* rsdp_desc = (struct RSDPDescriptor*)acpi->rsdp;
+	struct RSDT* rsdt = (struct RSDT*)VPTR(rsdp_desc->RSDTAddress);
 
-// int dec_to_hex(unsigned int num, char* hex_str)
-// {
-//     char hex_digits[16] = "0123456789ABCDEF";
-//     int i = 0;
-    
-//     do {
-//         hex_str[i++] = hex_digits[num % 16];
-//         num /= 16;
-//     } while (num > 0);
-    
-//     // Reverse the string
-//     int j, k;
-//     char temp;
-//     for (j = 0, k = i-1; j < k; j++, k--) {
-//         temp = hex_str[j];
-//         hex_str[j] = hex_str[k];
-//         hex_str[k] = temp;
-//     }
-    
-//     // Add the "0x" prefix
-//     // hex_str[i++] = 'x';
-//     // hex_str[i++] = '0';
-//     // hex_str[i] = '\0';
+	for(uint32_t i=0; i < RSDT_ITEMS_COUNT(rsdt); i++) {
+		struct SDTHeader* sdt = (struct SDTHeader*)VPTR(rsdt->sdtAddresses[i]);
+		int sig_itr = 0;
+		for(sig_itr=0; sig_itr < 4; sig_itr++) {
+			if(sdt->Signature[sig_itr] != signature[sig_itr]) break;
+		}
+		if(sig_itr == 4)
+			return sdt;
+	}
 
-//     return  i;
-// }
+	return NULL;
+}
+
+struct MADTEntry* find_madt_record(struct MADT* madt, uint8_t type, uint32_t offset) {
+	struct MADTEntry* entry = (struct MADTEntry*)((uint64_t)madt + sizeof(struct MADT));
+	
+	uint64_t scanned_length=0;
+	uint32_t count = 0;
+	while(scanned_length < madt->sdtHeader.Length) {
+		if(entry->type == type) {
+			if(count == offset) {
+				return entry;
+			}
+			count++;
+		}
+
+		entry = (struct MADTEntry*)((uint64_t)entry + entry->length);
+		scanned_length += entry->length;
+	}	
+
+	return NULL;
+}
 
 void strcpy(char* src, char* dst) {
     while(*src) {
         *dst++ = *src++;
+    }
+}
+
+int strlen(char* str) {
+	int len = 0;
+	while(str[len++] != 0);
+	return len;
+}
+
+int strcmp(char* str1, char* str2, size_t size) {
+	if(size == 0) {
+		int len1 = strlen(str1);
+		int len2 = strlen(str2);
+		if(len1 != len2) return len1 - len2;
+	}
+	for(size_t i=0; i < size; i++) {
+		if(*str1 == 0 || *str2 == 0) return -1;
+		int diff = *str1 - *str2;
+		if(diff != 0) return diff;
+	}
+
+	return 0;
+}
+
+void memcpy(void* dst, void* src, size_t size) {
+    for(size_t i=0; i < size; i++) {
+        *(uint8_t*)dst = *((uint8_t*)src + i);
     }
 }

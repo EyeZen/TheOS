@@ -5,7 +5,8 @@
 
 #define CONSOLE_TYPE_SCREEN 0u
 #define CONSOLE_TYPE_LOG 1u
-#define CONSLE_TYPE_LIMIT 2u
+#define CONSOLE_TYPE_FRAMEBUFFER 2u
+#define CONSOLE_TYPE_LIMIT 3u
 
 #define PORT 0x3f8
 
@@ -31,7 +32,7 @@ enum {
 void print_clear();
 void kputchar(char character);
 // void print_str(char* string);
-void print_set_color(uint8_t foreground, uint8_t background);
+void print_set_color(uint32_t foreground, uint32_t background);
 // void print_num(uint32_t n);
 void print_newline();
 

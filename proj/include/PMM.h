@@ -27,6 +27,7 @@ struct PMM_t {
     size_t frames_used;
     struct multiboot_mmap_entry* entries;
     size_t entries_count;
+    size_t total_memory;
 
 };
 extern struct PMM_t phys_mem;

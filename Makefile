@@ -42,7 +42,7 @@ $(x86_64_asm_object_files): build/obj/boot/%.o : proj/src/boot/%.asm
 	$(ASM) -felf64 $(patsubst build/obj/boot/%.o, proj/src/boot/%.asm, $@) -o $@
 
 $(PROJECT).bin: $(kernel_object_files) $(x86_64_object_files)
-	@$(LD) -n -T proj/linker.ld -Map build/$(PROJECT).map $(kernel_object_files) $(x86_64_object_files)
+	@# @$(LD) -n -T proj/linker.ld -Map build/$(PROJECT).map $(kernel_object_files) $(x86_64_object_files)
 	@mkdir -p dist/ && \
 	$(LD) -n -T proj/linker.ld -o dist/$(PROJECT).bin $(kernel_object_files) $(x86_64_object_files)
 

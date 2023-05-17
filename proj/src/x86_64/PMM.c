@@ -13,8 +13,8 @@ void pmm_setup(struct multiboot_info_header* mbi_header)
     size_t lower_limit = (size_t)mbi_header + mbi_header->total_size;
     // determine memory required for bitmap
     struct multiboot_tag_basic_meminfo* meminfo = (struct multiboot_tag_basic_meminfo*)find_tag(mbi_header, MULTIBOOT_TAG_TYPE_BASIC_MEMINFO);
-    size_t total_memory = (meminfo->mem_upper + 1024) * 1024;   // total memory in bytes
-    phys_mem.frame_count = total_memory / FRAME_SIZE + 1;
+    phys_mem.total_memory = (meminfo->mem_upper + 1024) * 1024;   // total memory in bytes
+    phys_mem.frame_count = phys_mem.total_memory / FRAME_SIZE + 1;
     phys_mem.frames_used = 0;
     phys_mem.bitmap.size = phys_mem.frame_count / BITS_PER_ROW + 1; // bitmap size in type-of(memory_map[0]) units
     size_t bitmap_size_in_bytes = phys_mem.frame_count / 8 + 1; // bitmap size in bytes

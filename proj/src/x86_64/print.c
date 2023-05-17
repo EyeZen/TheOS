@@ -1,6 +1,10 @@
 #include "print.h"
 #include <stdarg.h>
 
+#include "Fonts.h"
+#include "RASCI.h"
+#include "fbuff.h"
+
 unsigned char _KCONSOLE_TYPE;
 
 static const size_t NUM_COLS = 80;
@@ -14,6 +18,31 @@ struct Char {
 struct Char* buffer = (struct Char*) 0xb8000;
 size_t col = 0;
 size_t row = 0;
+
+uint32_t console_cursor_x = 0;
+uint32_t console_cursor_y = 0;
+Font* console_font = &rasci_font;
+uint32_t console_bg = BLACK;
+uint32_t console_fg = WHITE; 
+
+void console_putchar(char symbol) {
+    if(symbol != '\n' && (symbol <  0x20 || (unsigned char)symbol >= console_font->num_glyphs)) return;
+    if(symbol == '\n') {
+        console_cursor_x = 0;
+        console_cursor_y++;
+    } else {
+        fb_putchar(symbol, console_cursor_x, console_cursor_y, console_fg, console_bg, console_font);
+        console_cursor_x++;
+    }
+
+    // if(console_cursor_x >= framebuffer.pitch / ((console_font->glyph_width * framebuffer.bpp)/8)) {
+    //     console_cursor_x = 0;
+    //     console_cursor_y++;
+    // }
+    // if(console_cursor_y > (framebuffer.buffer_size / console_font->glyph_height)) 
+    //     console_cursor_y = 0;
+}
+
 uint8_t color = PRINT_COLOR_WHITE | (PRINT_COLOR_BLACK << 4);
 
 inline unsigned char in(int portnum)
@@ -51,7 +80,7 @@ int init_serial() {
 }
 
 void console_set_type(unsigned char type) {
-    if(type < CONSLE_TYPE_LIMIT) {
+    if(type < CONSOLE_TYPE_LIMIT) {
         _KCONSOLE_TYPE = type;
     }
 }
@@ -101,6 +130,9 @@ void kputchar(char character) {
     if(_KCONSOLE_TYPE == CONSOLE_TYPE_LOG) {
         out(PORT, character);
         return;
+    } else if(_KCONSOLE_TYPE == CONSOLE_TYPE_FRAMEBUFFER) {
+        console_putchar(character);
+        return;
     }
 
     if(character == '\n') {
@@ -120,8 +152,13 @@ void kputchar(char character) {
     col++;
 }
 
-void print_set_color(uint8_t foreground, uint8_t background) {
-    color = foreground + (background << 4);
+void print_set_color(uint32_t foreground, uint32_t background) {
+    if(_KCONSOLE_TYPE == CONSOLE_TYPE_SCREEN)
+        color = (uint8_t)foreground + ((uint8_t)background << 4);
+    else if(_KCONSOLE_TYPE == CONSOLE_TYPE_FRAMEBUFFER) {
+        console_fg = foreground;
+        console_bg = background;
+    }
 }
 
 void print_string(const char* str) {

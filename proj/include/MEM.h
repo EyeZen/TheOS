@@ -1,6 +1,9 @@
 #ifndef _MEM_H
 #define _MEM_H
 
+#include <stdint.h>
+#include <stddef.h>
+
 #define PAGE_SIZE 0x1000              // 4KiB
 
 #define TABLE_OFFSET_MASK   0x1ffL    // 9 bits table offsets
@@ -31,7 +34,19 @@
 #define MiB (KiB * KiB)
 #define GiB (KiB * KiB * KiB)
 
-#include <stdint.h>
+
+#define READMEM32(addr) \
+(*(volatile uint32_t*)((uintptr_t)addr))
+
+#define READMEM64(addr) \
+(*(volatile uint64_t*)((uintptr_t)addr))
+
+#define WRITEMEM32(addr, u32) \
+(*(volatile uint32_t*)((uintptr_t)addr)) = u32
+
+#define WRITEMEM64(addr, u64) \
+(*(volatile uint64_t*)((uintptr_t)addr)) = u64
+
 
 void clean_new_table(uint64_t *);
 

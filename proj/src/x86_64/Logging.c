@@ -1,9 +1,10 @@
 #include "Logging.h"
 #include "utils.h"
 #include "IDT.h"
-#include "RSDP.h"
+#include "ACPI.h"
 #include "KHeap.h"
 #include "Fonts.h"
+#include "VMM.h"
 
 
 // #define PORT 0x3f8
@@ -85,10 +86,25 @@ static const char* multiboot_framebuffer_type[3] = {
     "MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT",
 };
 
+static const char* madt_entries[] = {
+    "PROCESSOR_LOCAL_APIC",   
+    "IO_APIC",
+    "IO_APIC_INTERRUPT_SOURCE_OVERRIDE",
+    "NMI_INTERRUPT_SOURCE",   
+    "LOCAL_APIC_NMI", 
+    "LOCAL_APIC_ADDRESS_OVERRIDE",
+    "",
+    "",
+    "",
+    "PRORCESSOR_LOCAL_X2APIC",
+};
 
 int _block_level_count = 0;
 
-void reset_block() { _block_level_count = 0; }
+void reset_block() { 
+    while(_block_level_count > 0) block_end();
+    // _block_level_count = 0; 
+}
 void block_align() {
 
     for(int blk = 0; blk < _block_level_count; blk++) {
@@ -110,6 +126,7 @@ void block_end() {
 
 void log_page_table(uint64_t* pml4t) 
 {
+    reset_block();
     logfa("Page Table\n");
     logfa("PML4T: %ull\n", (uint64_t)pml4t);
 
@@ -252,17 +269,172 @@ void log_tag(struct multiboot_tag* tag)
             struct multiboot_tag_old_acpi* t_nacip = (struct multiboot_tag_old_acpi*)tag;
             struct RSDPDescriptor* rsdp_desc = (struct RSDPDescriptor*)t_nacip->rsdp; 
 
+            // CHECKSUM CALC
+            uint64_t checksum_itr=0;
+            uint8_t rsdp_checksum = 0;
+            for(uint8_t* ptr = (uint8_t*)rsdp_desc; checksum_itr < sizeof(struct RSDPDescriptor); checksum_itr++, ptr++)
+            {
+                rsdp_checksum += *ptr;
+            }
+
             logfa("RSDPDescriptor:\n");
             block_start();
                 logfa("Signature: ");
                     for(int i=0; i<8; i++) logf("%c", rsdp_desc->Signature[i]);
                 logf("\n");
                 logfa("Checksum: %d\n", rsdp_desc->Checksum);
+                logfa("Calculated-Checksum: %d\n", rsdp_checksum);
                 logfa("OEMID: ");
                     for(int i=0; i<6; i++) logf("%c", rsdp_desc->OEMID[i]);
                 logf("\n");
                 logfa("Revision: %d\n", rsdp_desc->Revision);
                 logfa("RSDTAddress: %d\n", rsdp_desc->RSDTAddress);
+
+                struct RSDT* rsdt = (struct RSDT*)VPTR(rsdp_desc->RSDTAddress);
+                logfa("RSDT:\n");
+                block_start();
+                    logfa("Signature: ");
+                        for(int i=0; i < 4; i++) logf("%c", rsdt->sdtHeader.Signature[i]);
+                    logf("\n");
+                    logfa("Length: %ul\n", rsdt->sdtHeader.Length);
+                    logfa("Revision: %u\n", rsdt->sdtHeader.Revision);
+                    logfa("Checksum: %u\n", rsdt->sdtHeader.Checksum);
+                    logfa("Calculated-Checksum: %u\n", SDTChecksum(&(rsdt->sdtHeader)));
+                    logfa("OEMID: ");
+                        for(int i=0; i < 6; i++) logf("%c", rsdt->sdtHeader.OEMID[i]);
+                    logf("\n");
+                    logfa("OEMTableID: ");
+                        for(int i=0; i < 8; i++) logf("%c", rsdt->sdtHeader.OEMTableID[i]);
+                    logf("\n");
+                    logfa("OEMRevision: %ul\n", rsdt->sdtHeader.OEMRevision);
+                    logfa("CreatorID: %ul\n", rsdt->sdtHeader.CreatorID);
+                    logfa("CreatorRevision: %ul\n", rsdt->sdtHeader.CreatorRevision);
+
+                    for(uint32_t i=0; i < RSDT_ITEMS_COUNT(rsdt); i++) {
+                        struct SDTHeader* sdt = (struct SDTHeader*)VPTR(rsdt->sdtAddresses[i]);
+                        logf("\n");
+                        logfa("SDT_%d:\n", i);
+                        block_start();
+                            logfa("Signature: ");
+                                for(int i=0; i < 4; i++) logf("%c", sdt->Signature[i]);
+                            logf("\n");
+                            logfa("Length: %ul\n", sdt->Length);
+                            logfa("Revision: %u\n", sdt->Revision);
+                            logfa("Checksum: %u\n", sdt->Checksum);
+                            logfa("Calculated-Checksum: %u\n", SDTChecksum(sdt));
+                            logfa("OEMID: ");
+                                for(int i=0; i < 6; i++) logf("%c", sdt->OEMID[i]);
+                            logf("\n");
+                            logfa("OEMTableID: ");
+                                for(int i=0; i < 8; i++) logf("%c", sdt->OEMTableID[i]);
+                            logf("\n");
+                            logfa("OEMRevision: %ul\n", sdt->OEMRevision);
+                            logfa("CreatorID: %ul\n", sdt->CreatorID);
+                            logfa("CreatorRevision: %ul\n", sdt->CreatorRevision);
+
+                            if(strcmp(sdt->Signature, SDT_SIGNATURE_APIC, 4) == 0) {
+                                struct MADT* madt = (struct MADT*)sdt;
+                                struct MADTEntry* madt_entry = (struct MADTEntry*)((uint64_t)madt + sizeof(struct MADT));
+
+                                uint64_t bytes_read = sizeof(struct MADT);
+                                uint32_t count = 0;
+
+                                logfa("MADT-Entries: \n");
+                                block_start();
+                                while(bytes_read < madt->sdtHeader.Length) {
+                                    bytes_read += madt_entry->length;
+                                    logfa("MADT_%d : %s[%d]\n", count, madt_entries[madt_entry->type], madt_entry->length);
+                                    block_start();
+                                        switch(madt_entry->type) {
+                                            case MADT_PROCESSOR_LOCAL_APIC:{
+                                                struct MADTEntry_ProcessorLocalAPIC* plapic = (struct MADTEntry_ProcessorLocalAPIC*)madt_entry;
+                                                logfa("acpi_processor_id: %u\n", plapic->acpi_processor_id);
+                                                logfa("apic_id: %u\n", plapic->apic_id);
+                                                logfa("flags: %xl\n", plapic->flags);
+                                                }break;
+                                            case MADT_IO_APIC:{
+                                                struct MADTEntry_IOAPIC* ioapic = (struct MADTEntry_IOAPIC*)madt_entry;
+                                                logfa("id: %d\n", ioapic->id);
+                                                logfa("reserved: %d\n", ioapic->reserved); 
+                                                logfa("address: %ul\n", ioapic->address); 
+                                                logfa("global_system_interrupt_base: %ul\n", ioapic->global_system_interrupt_base); 
+                                                uint32_t version = read_ioapic_register(IO_APIC_VER_OFFSET);
+                                                uint32_t bus_arb_priority = read_ioapic_register(IO_APIC_ARB_OFFSET);
+                                                uint8_t redirections_count = (uint8_t)(version >> 16);
+                                                logfa("version: %d\n", version);
+                                                logfa("redirections count: %u\n", redirections_count);
+                                                logfa("bus arbitration priority: %ul\n", bus_arb_priority);
+                                                logfa("redirection-table:\n");
+                                                block_start();
+                                                IOAPIC_RedirectEntry redtbl_entry;
+                                                
+                                                for(uint8_t redtbl_index = 0x10; redtbl_index < 0x3F && redtbl_index < redirections_count; redtbl_index += 2) {
+                                                    if(read_ioapic_redirect(redtbl_index, &redtbl_entry) != 0) {
+                                                        break;
+                                                    }
+                                                    logfa("RED_TBL[%x]\n", redtbl_index);
+                                                    block_start();
+                                                        logfa("raw: %x\n", redtbl_entry.raw);
+                                                        logfa("vector: %d\n", redtbl_entry.vector);
+                                                        logfa("delivery_mode: %d\n", redtbl_entry.delivery_mode);
+                                                        logfa("destination_mode: %d\n", redtbl_entry.destination_mode);
+                                                        logfa("delivery_status: %d\n", redtbl_entry.delivery_status);
+                                                        logfa("pin_polarity: %d\n", redtbl_entry.pin_polarity);
+                                                        logfa("remote_irr: %d\n", redtbl_entry.remote_irr);
+                                                        logfa("trigger_mode: %d\n", redtbl_entry.trigger_mode);
+                                                        logfa("interrupt_mask: %d\n", redtbl_entry.interrupt_mask);
+                                                        logfa("reserved: %d\n", redtbl_entry.reserved);
+                                                        logfa("destination_field: %d\n", redtbl_entry.destination_field);
+                                                    block_end();
+                                                }
+                                                block_end();
+                                                }break;
+                                            case MADT_IO_APIC_INTERRUPT_SOURCE_OVERRIDE:{
+                                                struct MADTEntry_IOAPIC_InterruptSourceOverride* ioapic_iso = (struct MADTEntry_IOAPIC_InterruptSourceOverride*)madt_entry;
+                                                logfa("bus_source: %u\n", ioapic_iso->bus_source);
+                                                logfa("irq_source: %u\n", ioapic_iso->irq_source);
+                                                logfa("global_system_interrupt: %ul\n", ioapic_iso->global_system_interrupt);
+                                                logfa("flags: %x\n", ioapic_iso->flags);
+                                                }break;
+                                            case MADT_NMI_INTERRUPT_SOURCE:{
+                                                struct MADTEntry_IOAPIC_NMISource* ioapic_nmi_source = (struct MADTEntry_IOAPIC_NMISource*)madt_entry;
+                                                logfa("nmi_source: %u\n", ioapic_nmi_source->nmi_source);
+                                                logfa("reserved: %u\n", ioapic_nmi_source->reserved);
+                                                logfa("flags: %x\n", ioapic_nmi_source->flags);
+                                                logfa("global_system_interrupt: %ul\n", ioapic_nmi_source->global_system_interrupt);
+                                                }break;
+                                            case MADT_LOCAL_APIC_NMI:{
+                                                struct MADTEntry_LAPIC_NMI* lapic_nmi = (struct MADTEntry_LAPIC_NMI*)madt_entry;
+                                                logfa("acpi_processor_id: %u\n", lapic_nmi->acpi_processor_id);
+                                                logfa("flags: %x\n", lapic_nmi->flags);
+                                                logfa("LINT: %u\n", lapic_nmi->LINT);
+                                                }break;
+                                            case MADT_LOCAL_APIC_ADDRESS_OVERRIDE:{
+                                                struct MADTEntry_LAPIC_AddressOverride* lapic_addrover = (struct MADTEntry_LAPIC_AddressOverride*)madt_entry;
+                                                logfa("reserved: %u\n", lapic_addrover->reserved);
+                                                logfa("lapic_physical_address: %ull\n", lapic_addrover->lapic_physical_address);
+                                                }break;
+                                                //....
+                                            case MADT_PRORCESSOR_LOCAL_X2APIC:{
+                                                struct MADTEntry_Localx2APIC* lx2apic = (struct MADTEntry_Localx2APIC*)madt_entry;
+                                                logfa("reserved: %u\n", lx2apic->reserved);
+                                                logfa("id: %u\n", lx2apic->id);
+                                                logfa("flags: %x\n", lx2apic->flags);
+                                                logfa("acpi_id: %u\n", lx2apic->acpi_id);
+                                                }break;
+                                            default:{
+                                                
+                                            }
+                                        }
+                                    block_end();
+                                    madt_entry = (struct MADTEntry*)((uint64_t)madt_entry + madt_entry->length);
+                                    count++;
+                                }
+                                block_end();
+                            }
+                        block_end();
+                    }
+                block_end();
             block_end();
 
         } break;
@@ -288,6 +460,7 @@ void log_mbheader(struct multiboot_info_header* mboot_header) {
 } 
 
 void log_context(struct cpu_status_t* context) {
+    // reset_block();
     logfa("CPU-Context:\n");
     block_start();
         logfa("r15: %ull\n",        (uint64_t)context->r15);
@@ -315,6 +488,7 @@ void log_context(struct cpu_status_t* context) {
 
 void log_interrupt(struct cpu_status_t* context)
 {
+    reset_block();
     logfa("Interrupt: %s\n", exception_names[context->vector_number]);
     block_start();
     logfa("Vector#: %d\n", context->vector_number);

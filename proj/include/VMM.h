@@ -8,6 +8,8 @@
 #define ADDRESS_MAPPED      1
 #define ADDRESS_MISMATCH    2
 
+#define VPTR(x) (void*)((uint64_t)(x))
+
 void *map_phys_to_virt_addr(void* physical_address, void* address, unsigned int flags);
 
 void *map_vaddress(void *virtual_address, unsigned int flags);
