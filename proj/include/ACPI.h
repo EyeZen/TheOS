@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "multiboot.h"
 
 // Root System Descriptro Table (Hardware Information) Descriptor
@@ -150,7 +151,7 @@ union IOAPIC_RedirectEntry_t
 typedef union IOAPIC_RedirectEntry_t IOAPIC_RedirectEntry;
 
 
-
+/* -------------- Root System Descriptors ------------- */
 #define RSDT_ITEMS_COUNT(rsdt) ((rsdt->sdtHeader.Length - sizeof(struct SDTHeader)) / sizeof(uint32_t))
 #define XSDT_ITEMS_COUNT(xsdt) ((xsdt->sdtHeader.Length - sizeof(struct SDTHeader)) / sizeof(uint64_t))
 
@@ -166,6 +167,7 @@ typedef union IOAPIC_RedirectEntry_t IOAPIC_RedirectEntry;
 #define SDT_SIGNATURE_MCFG "MCFG"
 #define SDT_SIGNATURE_DBG2 "DBG2"
 
+/* ----------- Programmable Interrupt Controller ---------- */
 #define PIC_COMMAND_MASTER 0x20
 #define PIC_COMMAND_SLAVE 0xA0
 #define PIC_DATA_MASTER 0x21
@@ -182,6 +184,8 @@ typedef union IOAPIC_RedirectEntry_t IOAPIC_RedirectEntry;
 // 8086 mode of operation
 #define ICW_4   0x01
 
+/* ------------------ Local APIC ------------------ */
+
 #define APIC_SPURIOUS_VECTOR_REGISTER_OFFSET 0xF0
 #define APIC_SPURIOUS_INTERRUPT_IDT_ENTRY 0xFF
 #define APIC_SOFTWARE_ENABLE (1 << 8)
@@ -193,6 +197,7 @@ typedef union IOAPIC_RedirectEntry_t IOAPIC_RedirectEntry;
 #define APIC_GLOBAL_ENABLE_BIT 11
 #define APIC_BASE_ADDRESS_MASK 0xFFFFF000
 
+/* ---------------- IOAPIC ---------------- */
 
 #define MADT_PROCESSOR_LOCAL_APIC    0
 #define MADT_IO_APIC 1
@@ -253,16 +258,26 @@ uint8_t validate_ACPIChecksum(struct SDTHeader *sdtHeader);
 uint8_t validate_RSDPChecksum(struct RSDPDescriptor* rsdp_desc);
 void acpi_init(struct multiboot_info_header* mboot_header);
 
+// LAPIC
 void apic_init();
 uint32_t read_apic_register(uint32_t register_offset);
 void write_apic_register(uint32_t register_offset, uint32_t value);
 uint32_t lapic_id();
+bool lapic_is_x2();
 
+// IOAPIC
 void ioapic_init(struct MADT* madt);
 int parse_ioapic_interrupt_source_overrides(struct MADT* madt);
 uint32_t read_ioapic_register(uint8_t offset);
 void write_ioapic_register(uint8_t offset, uint32_t value);
 int read_ioapic_redirect(uint8_t index, IOAPIC_RedirectEntry *redtbl_entry);
 int write_ioapic_redirect(uint8_t index, IOAPIC_RedirectEntry redtbl_entry);
+
+void set_irq(uint8_t irq_type, uint8_t redirect_table_index, uint8_t idt_entry, uint8_t destination_field, uint32_t flags, bool masked);
+int set_irq_mask(uint8_t redirect_table_index, bool masked_status);
+
+extern uint64_t apic_base_address;
+extern uint64_t ioapic_base_address;
+extern uint8_t ioapic_source_override_array_size;
 
 #endif

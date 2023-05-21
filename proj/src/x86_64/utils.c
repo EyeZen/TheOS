@@ -43,7 +43,7 @@ struct SDTHeader* find_sdt(struct multiboot_info_header* mboot_header, const cha
 struct MADTEntry* find_madt_record(struct MADT* madt, uint8_t type, uint32_t offset) {
 	struct MADTEntry* entry = (struct MADTEntry*)((uint64_t)madt + sizeof(struct MADT));
 	
-	uint64_t scanned_length=0;
+	uint64_t scanned_length=sizeof(struct MADT);
 	uint32_t count = 0;
 	while(scanned_length < madt->sdtHeader.Length) {
 		if(entry->type == type) {
@@ -53,8 +53,8 @@ struct MADTEntry* find_madt_record(struct MADT* madt, uint8_t type, uint32_t off
 			count++;
 		}
 
-		entry = (struct MADTEntry*)((uint64_t)entry + entry->length);
 		scanned_length += entry->length;
+		entry = (struct MADTEntry*)((uint64_t)entry + entry->length);
 	}	
 
 	return NULL;

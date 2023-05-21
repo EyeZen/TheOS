@@ -8,8 +8,9 @@
 
 uint64_t apic_base_address;
 uint64_t ioapic_base_address;
-struct MADTEntry_IOAPIC_InterruptSourceOverride ioapic_source_overrides[IO_APIC_SOURCE_OVERRIDE_MAX_ITEMS];
 uint8_t ioapic_source_override_array_size;
+struct MADTEntry_IOAPIC_InterruptSourceOverride ioapic_source_overrides[IO_APIC_SOURCE_OVERRIDE_MAX_ITEMS];
+bool apicInX2Mode = false;
 
 inline unsigned char in(int portnum)
 {
@@ -48,16 +49,31 @@ inline void __get_cpuid(uint32_t function, uint32_t* eax, uint32_t* ebx, uint32_
                  : "a" (function));
 }
 
+#define PIC_WAIT() \
+	do { \
+		/* May be fragile */ \
+		asm volatile("jmp 1f\n\t" \
+		             "1:\n\t" \
+		             "    jmp 2f\n\t" \
+		             "2:"); \
+	} while (0)
+
 // setting up local-apic
 inline void disable_pic() {
-    out(PIC_COMMAND_MASTER, ICW_1);
-    out(PIC_COMMAND_SLAVE, ICW_1);
-    out(PIC_DATA_MASTER, ICW_2_M);
-    out(PIC_DATA_SLAVE, ICW_2_S);
-    out(PIC_DATA_MASTER, ICW_3_M);
-    out(PIC_DATA_SLAVE, ICW_3_S);
-    out(PIC_DATA_MASTER, ICW_4);
-    out(PIC_DATA_SLAVE, ICW_4);
+    out(PIC_COMMAND_MASTER, ICW_1); PIC_WAIT(); // start of initialization sequence, 0x11
+    out(PIC_COMMAND_SLAVE, ICW_1); PIC_WAIT();  // start of initialization sequence, 0x11
+
+    out(PIC_DATA_MASTER, ICW_2_M); PIC_WAIT();  // interrupt vector offset, 0x20
+    out(PIC_DATA_SLAVE, ICW_2_S); PIC_WAIT();   // interrupt vector offset, 0x28
+
+    out(PIC_DATA_MASTER, ICW_3_M); PIC_WAIT();  // slave offset (pin 0x04), or self-id if itself a slave
+    out(PIC_DATA_SLAVE, ICW_3_S); PIC_WAIT();   // slave offset, or self-id (0x02) if itself a slave
+
+    // request 8086-mode(0x01) on each pic
+    out(PIC_DATA_MASTER, ICW_4); PIC_WAIT();
+    out(PIC_DATA_SLAVE, ICW_4); PIC_WAIT();
+
+    // mask all interrupts for the pic
     out(PIC_DATA_MASTER, 0xFF);
     out(PIC_DATA_SLAVE, 0xFF);
 }
@@ -108,8 +124,8 @@ void acpi_init(struct multiboot_info_header* mboot_header) {
     uint32_t header_pages_count =rsdt->sdtHeader.Length / PAGE_SIZE + 1;
     // map more pages, if needed
     if(header_pages_count > 1) {
-        for(uint32_t i=0; i < header_pages_count; i++) {
-            void* next_page_address = VPTR(rsdp->RSDTAddress + (i * PAGE_SIZE));
+        for(uint32_t i=1; i < header_pages_count; i++) {
+            void* next_page_address = VPTR((uint64_t)rsdt + (i * PAGE_SIZE));
             identity_map_phys_address(next_page_address, PRESENT_BIT);
             _bitmap_set_bit_from_address((uint64_t)next_page_address);
         }
@@ -125,11 +141,27 @@ void acpi_init(struct multiboot_info_header* mboot_header) {
     }
     // sdt_apic
     struct MADT* madt = (struct MADT*)find_sdt(mboot_header, SDT_SIGNATURE_APIC);
-    struct MADTEntry*  madt_entries = (struct MADTEntry* )((uint64_t)madt + sizeof(struct MADT));
+    struct MADTEntry*  madt_entry = (struct MADTEntry* )((uint64_t)madt + sizeof(struct MADT));
+
+    uint64_t scanned_bytes = sizeof(struct MADT);
+    while(scanned_bytes < madt->sdtHeader.Length) {
+        identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)madt_entry), PRESENT_BIT);
+        _bitmap_set_bit_from_address(ALIGN_PHYSADDRESS((uint64_t)madt_entry));
+
+        size_t madt_entry_frames_count = madt_entry->length / FRAME_SIZE + 1;
+        for(size_t i=1; i < madt_entry_frames_count; i++) {
+            uint64_t entry_page_addr = (uint64_t)madt_entry + PAGE_SIZE * i;
+            identity_map_phys_address((void*)ALIGN_PHYSADDRESS(entry_page_addr), PRESENT_BIT);
+            _bitmap_set_bit_from_address(ALIGN_PHYSADDRESS(entry_page_addr));
+        }
+
+        scanned_bytes += madt_entry->length;
+        madt_entry = (struct MADTEntry*)((uint64_t)madt_entry + madt_entry->length);
+    }
 
     // map madt data
-    identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)madt_entries), PRESENT_BIT);
-    _bitmap_set_bit_from_address(ALIGN_PHYSADDRESS((uint64_t)madt_entries));
+    // identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)madt_entry), PRESENT_BIT);
+    // _bitmap_set_bit_from_address(ALIGN_PHYSADDRESS((uint64_t)madt_entry));
 
     apic_init();
     ioapic_init(madt);
@@ -140,7 +172,10 @@ void acpi_init(struct multiboot_info_header* mboot_header) {
 void apic_init() {
     // configure lapic
     uint64_t msr_output = rdmsr(IA32_APIC_BASE);
+    logf("APIC MSR: %ul\n", msr_output);
     apic_base_address = (msr_output&APIC_BASE_ADDRESS_MASK);
+    logf("APIC Base Address: %ull\n", apic_base_address);
+    logf("Apic enabled: %x - Apic BSP bit: %x\n", 1&(msr_output >> APIC_GLOBAL_ENABLE_BIT), 1&(msr_output >> APIC_BSP_BIT));
     if(apic_base_address == 0) {
         logf("Could not determine apic-base-address\n");
         return;
@@ -152,6 +187,7 @@ void apic_init() {
 
     if(x2ApicLeaf & (1 << 21)) {
         logf("X2APIC Supported!");
+        apicInX2Mode = true;
         // x2apic is accessed through msr
         // once enabled, cannot be disabled without resetting the system
         msr_output |= (1 << 10);
@@ -164,7 +200,7 @@ void apic_init() {
     }
 
     // setup spurious vector register entry
-    // uint32_t spurious_interrupt_reg = read_apic_register(APIC_SPURIOUS_VECTOR_REGISTER_OFFSET);
+    uint32_t spurious_interrupt_register = read_apic_register(APIC_SPURIOUS_VECTOR_REGISTER_OFFSET);
 
     if(!(1 & (msr_output >> APIC_GLOBAL_ENABLE_BIT))) {
         logf("APIC Disabled Globally\n");
@@ -178,47 +214,67 @@ void apic_init() {
         _bitmap_set_bit(FRAME_POS1(apic_base_address));
     }
 
+    uint32_t version_register = read_apic_register(0x30);
+    logf("Version register value: 0x%x\n", version_register);
+    logf("Spurious vector value: 0x%x\n", spurious_interrupt_register);
     disable_pic();
 }
 
 uint32_t read_apic_register(uint32_t register_offset) {
-    return READMEM32(apic_base_address + register_offset);
+    if(apicInX2Mode)
+        return (uint32_t)rdmsr((register_offset >> 4) + 0x800);
+    else
+        return READMEM32(apic_base_address + register_offset);
 }
 
 void write_apic_register(uint32_t register_offset, uint32_t value) {
-    WRITEMEM32(apic_base_address + register_offset, value);
+    if(apicInX2Mode)
+        wrmsr((register_offset >> 4) + 0x800, value);
+    else
+        WRITEMEM32(apic_base_address + register_offset, value);
 }
 
 uint32_t lapic_id()
 {
     uint32_t id = read_apic_register(APIC_ID_REGISTER_OFFSET);
-    return (id >> 24);
+    return apicInX2Mode ? id : id >> 24;
+}
+
+bool lapic_is_x2()
+{ 
+    return apicInX2Mode; 
 }
 
 
 // ========================= IOAPIC ============================
 void ioapic_init(struct MADT* madt) {
     struct MADTEntry_IOAPIC* ioapic = (struct MADTEntry_IOAPIC*)find_madt_record(madt, MADT_IO_APIC, 0);
-    // uint8_t ioapic_source_override_array_size = 0;
-    if(ioapic == NULL) return;
+    ioapic_source_override_array_size = 0;
+    if(ioapic == NULL) {
+        logf("IOAPIC NULL\n");
+    }
 
-    if(is_phyisical_address_mapped((uint64_t)ioapic, (uint64_t)ioapic) == ADDRESS_NOT_MAPPED) {
-        identity_map_phys_address((void*)ioapic, PRESENT_BIT);
+    if(is_phyisical_address_mapped(ALIGN_PHYSADDRESS((uint64_t)ioapic), ALIGN_PHYSADDRESS((uint64_t)ioapic)) == ADDRESS_NOT_MAPPED) {
+        identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)ioapic), PRESENT_BIT);
     }
 
     ioapic_base_address = (uint64_t)ioapic->address;
-    identity_map_phys_address((void*)ioapic_base_address, PRESENT_BIT);
+    identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)ioapic_base_address), PRESENT_BIT);
     _bitmap_set_bit(FRAME_POS1(ioapic_base_address));
 
-    // uint32_t ioapic_version = read_ioapic_register(IO_APIC_VER_OFFSET);
+    uint32_t ioapic_version = read_ioapic_register(IO_APIC_VER_OFFSET);
+    logf("IOAPIC Version: 0x%x\n", ioapic_version);
     IOAPIC_RedirectEntry redtbl_entry;
     if(read_ioapic_redirect(010, &redtbl_entry) != 0) {
-        logf("IOAPIC Read Redirecty Failed!");
+        logf("IOAPIC Read Redirecty Failed!\n");
         return;
     }
 
-    // uint8_t ioapic_redirections_count = (uint8_t)(ioapic_version >> 16);
+    uint8_t ioapic_redirections_count = (uint8_t)(ioapic_version >> 16);
     ioapic_source_override_array_size = parse_ioapic_interrupt_source_overrides(madt);
+    logf("Max redirection entries value: 0x%x\n", ioapic_redirections_count);
+    logf("Found %x source override entries\n", ioapic_source_override_array_size);
+    logf("---- SO Item: bus_source: %x - irq_source: %x - GSI: %x\n", ioapic_source_overrides[1].bus_source, ioapic_source_overrides[1].irq_source, ioapic_source_overrides[1].global_system_interrupt);
 }
 
 int parse_ioapic_interrupt_source_overrides(struct MADT* madt) {

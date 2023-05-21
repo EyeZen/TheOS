@@ -13,6 +13,7 @@
 #include "RASCI.h"
 
 #include "ACPI.h"
+#include <KTimer.h>
 
 const uint64_t end_of_mapped_memory = 4*MiB - 8;
 extern uint64_t _kernel_end;
@@ -34,8 +35,12 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 	console_set_type(CONSOLE_TYPE_FRAMEBUFFER);
     print_clear();
     // print_set_color(PRINT_COLOR_YELLOW, PRINT_COLOR_BLACK);
-    print_set_color(RED, BLACK);
+    print_set_color(WHITE, GREEN);
     kprintf("Welcome to our 64-bit kernel\n\n");
+
+	// uint32_t apic_ticks = calibrate_apic();
+	uint32_t apic_ticks = 10000;
+	logf("(kernel_main) Calibrated apic value: %u\n", apic_ticks);
 	
 	log_mbheader(mboot_header);
 	logfa("System:");
@@ -47,6 +52,7 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 
 
 	kprintf("Hello There");
-
+	start_apic_timer(apic_ticks, APIC_TIMER_SET_PERIODIC, APIC_TIMER_DIVIDER_2);
 	// log_page_table((uint64_t)(SIGN_EXTENSION|ENTRIES_TO_ADDRESS(511L, 511L, 511L, 511L)));
+	while(1);
 }

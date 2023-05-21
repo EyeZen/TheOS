@@ -11,29 +11,27 @@
 
 #define PAGE_FRAME_ADDRESS(page_frame) (page_frame & 0x000FFFFFFFFFF000)
 
-static const char *exception_names[] = {
-  "Divide by Zero Error",
-  "Debug",
-  "Non Maskable Interrupt",
-  "Breakpoint",
-  "Overflow",
-  "Bound Range",
-  "Invalid Opcode",
-  "Device Not Available",
-  "Double Fault",
-  "Coprocessor Segment Overrun",
-  "Invalid TSS",
-  "Segment Not Present",
-  "Stack-Segment Fault",
-  "General Protection Fault",
-  "Page Fault",
+static const char *exception_names[256] = {
+  [0]  = "Divide by Zero Error",
+  [1]  = "Debug",
+  [2]  = "Non Maskable Interrupt",
+  [3]  = "Breakpoint",
+  [4]  = "Overflow",
+  [5]  = "Bound Range",
+  [6]  = "Invalid Opcode",
+  [7]  = "Device Not Available",
+  [8]  = "Double Fault",
+  [9]  = "Coprocessor Segment Overrun",
+  [10] = "Invalid TSS",
+  [11] = "Segment Not Present",
+  [12] = "Stack-Segment Fault",
+  [13] = "General Protection Fault",
+  [14] = "Page Fault",
   "Reserved",
-  "x87 Floating-Point Exception",
-  "Alignment Check",
-  "Machine Check",
-  "SIMD Floating-Point Exception",
-  "Reserved",
-  "Reserved",
+  [16] = "x87 Floating-Point Exception",
+  [17] = "Alignment Check",
+  [18] = "Machine Check",
+  [19] = "SIMD Floating-Point Exception",
   "Reserved",
   "Reserved",
   "Reserved",
@@ -42,8 +40,15 @@ static const char *exception_names[] = {
   "Reserved",
   "Reserved",
   "Reserved",
-  "Security Exception",
-  "Reserved"
+  "Reserved",
+  "Reserved",
+  [30] = "Security Exception",
+  "Reserved",
+
+  [32] = "Timer Interrupt",
+  [33] = "Keyboard Interrupt",
+  [34] = "PIT Interrupt",
+  [255] = "Spurious Interrupt",
 };
 
 static const char* multiboot_tag_type[22] = {
@@ -492,7 +497,7 @@ void log_interrupt(struct cpu_status_t* context)
     logfa("Interrupt: %s\n", exception_names[context->vector_number]);
     block_start();
     logfa("Vector#: %d\n", context->vector_number);
-    log_context(context);
+    // log_context(context);
     switch(context->vector_number) {
         case INTR_DIVIDE_ERROR: {
 
@@ -534,7 +539,7 @@ void log_interrupt(struct cpu_status_t* context)
 
         } break;
         case INTR_GENERAL_PROTECTION: {
-
+            logfa("General Protection Fault\n");
         } break;
         case INTR_PAGE_FAULT: {
             logfa("PF_ERROR_CODE:");
@@ -563,19 +568,20 @@ void log_interrupt(struct cpu_status_t* context)
 
         } break;
         case INTR_APIC_TIMER_INTERRUPT: {
-
+            // logfa("Timer Interrupt\n");
         } break;
         case INTR_KEYBOARD_INTERRUPT: {
-
+            logfa("Keyboard Interrupt\n");
         } break;
         case INTR_PIT_INTERRUPT: {
-
+            // logfa("PIT Interrupt\n");
         } break;
         case INTR_APIC_SPURIOUS_INTERRUPT: {
-            
+            logfa("Spurious Interrupt\n");    
         } break;
-        default: 
+        default: {
             logfa("Undefined Interrupt");
+        }
     }
     block_end();
 }
