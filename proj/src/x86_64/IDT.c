@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <ACPI.h>
 #include <KTimer.h>
+#include <Keyboard.h>
 
 #define KERNEL_CS 0x8
 #define IDT_PRESENT_FLAG 0x80
@@ -192,7 +193,8 @@ struct cpu_status_t* interrupt_dispatch(struct cpu_status_t* context)
             write_apic_register(APIC_EOI_REGISTER_OFFSET, 0x0l);
         } break;
         case INTR_KEYBOARD_INTERRUPT: {
-
+            handle_keyboard_interrupt();
+            write_apic_register(APIC_EOI_REGISTER_OFFSET, 0x0l);
         } break;
         case INTR_PIT_INTERRUPT: {
             pit_irq_handler();

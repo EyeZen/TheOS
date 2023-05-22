@@ -99,21 +99,19 @@ void start_apic_timer(uint32_t initial_count, uint32_t flags, uint8_t divider) {
 
 void timer_handler() {
     scheduler_ticks++;
-    logf("\nsched ticks: %d\n", scheduler_ticks);
+    // logf("\nsched ticks: %d\n", scheduler_ticks);
 // #if USE_FRAMEBUFFER == 1
     if(pit_timer_counter == 0) {
         pit_timer_counter = 1;
-        logf("*%d %d %x %x\n", 0, 14, 0x000000, 0xE169CD);
     } else {
         pit_timer_counter = 0;
-        logf("/%d %d %x %x\n", 0, 14, 0x000000, 0xE169CD);
     }
 // #endif
-    if(scheduler_ticks > 1000) {
-        write_apic_register(APIC_TIMER_INITIAL_COUNT_REGISTER_OFFSET, 0);
-        PIT_WAIT();
-        logf("\nTimer Should Stop\n");
-    }
+    // if(scheduler_ticks > 1000) {
+    //     write_apic_register(APIC_TIMER_INITIAL_COUNT_REGISTER_OFFSET, 0);
+    //     PIT_WAIT();
+    //     logf("\nTimer Should Stop\n");
+    // }
 }
 
 
@@ -123,10 +121,8 @@ void pit_irq_handler() {
 // #if USE_FRAMEBUFFER == 1
     if(pit_timer_counter == 0) {
         pit_timer_counter = 1;
-        logf("-%d %d %x %x\n", 0, 11, 0x000000, 0xE169CD);
     } else {
         pit_timer_counter = 0;
-        logf("+%d %d %x %x\n", 0, 11, 0x000000, 0xE169CD);
     }
 // #endif
 }
