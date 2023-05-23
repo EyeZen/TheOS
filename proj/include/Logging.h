@@ -22,6 +22,7 @@
 void log_tag(struct multiboot_tag* tag);
 void log_mbheader(struct multiboot_info_header* mboot_header);
 void log_page_table(uint64_t* pml4t);
+void log_context(struct cpu_status_t* context);
 void log_interrupt(struct cpu_status_t* context);
 void log_heap();
 void log_glyph(char symbol, Font* font);

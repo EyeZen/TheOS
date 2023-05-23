@@ -33,6 +33,7 @@ extern Framebuffer framebuffer;
 void fb_init(struct multiboot_tag_framebuffer* mb_framebuffer);
 uint32_t fb_color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha);
 void fb_put_pixel(uint32_t x, uint32_t y, uint32_t color);
+void fb_clear(uint32_t color);
 void fb_draw_logo();
 void fb_putchar(char symbol, size_t cx, size_t cy, uint32_t fg, uint32_t bg, Font* font);
 void fb_printStr(const char *string, size_t cx, size_t cy, uint32_t fg, uint32_t bg, Font* font);

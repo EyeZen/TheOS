@@ -40,7 +40,8 @@ char keymap[] = {
 
 };
 
-size_t buf_position;
+size_t buf_write_head;
+size_t buf_read_head;
 uint8_t current_modifiers;
 bool extended_read;
 
@@ -88,7 +89,9 @@ void init_keyboard() {
     } else {
         translation_enabled = false;        
     }
-    buf_position = 0;
+    // buf_position = 0;
+    buf_write_head = 0;
+    buf_read_head = 0;
     
 }
 
@@ -106,8 +109,10 @@ uint8_t update_modifiers(key_modifiers modifier, bool is_pressed) {
 void handle_keyboard_interrupt() {
     
     uint8_t scancode = in(KEYBOARD_ENCODER_PORT);
+    size_t buf_position;
   
     if(translation_enabled == true || scancode_set == 1) {
+        buf_position = buf_write_head % MAX_KEYB_BUFFER_SIZE;
         uint8_t read_scancode = keyboard_buffer[buf_position].code = translate(scancode);        
         if( scancode != EXTENDED_PREFIX ) {
             keyboard_buffer[buf_position].code = read_scancode;
@@ -116,22 +121,19 @@ void handle_keyboard_interrupt() {
                 keyboard_buffer[buf_position].is_pressed = false;
             } else {
                 keyboard_buffer[buf_position].is_pressed = true;
-                char read_char = kgetch(keyboard_buffer[buf_position]);
-                // #if USE_FRAMEBUFFER == 1
-                    //_fb_printStrAndNumber("  Key pressed: 0x", keyboard_buffer[buf_position].code, 0, 10, 0x000000, 0xE169CD);
-                    if (read_char != 0) {
-                        // char string[13] = "Pressed: ";
-                        // string[9] = read_char;
-                        // string[10] = '-';
-                        // kprintf("%s\n", string);
-                        kprintf("%c",read_char);
-                        // _fb_printStr(string, 0, 10, 0x000000, 0x1ad652);
-                    }
-                // #endif
+                // char read_char = kgetch(keyboard_buffer[buf_position]);
+                // if (read_char != 0) {
+                //     kprintf("%c",read_char);
+                // }
                 logf("+ Key is pressed pos %d: SC: %x - Code: %x - Mod: %x %c\n", buf_position, scancode, keyboard_buffer[buf_position].code, keyboard_buffer[buf_position].modifiers, kgetch(keyboard_buffer[buf_position]));
             }
-            buf_position = BUF_STEP(buf_position);
+            // buf_position = BUF_STEP(buf_position);
+            buf_write_head++;
         } 
+    }
+
+    if(buf_write_head - buf_read_head > MAX_KEYB_BUFFER_SIZE) {
+        buf_read_head = buf_write_head - MAX_KEYB_BUFFER_SIZE;
     } 
 }
 
@@ -194,4 +196,16 @@ key_codes translate(uint8_t scancode) {
     }
     extended_read = false;
     return scancode_mappings[0];
+}
+
+key_status get_next_key() {
+    if(buf_read_head < buf_write_head) {
+        size_t buf_position = buf_read_head % MAX_KEYB_BUFFER_SIZE;
+        buf_read_head++;
+
+        return keyboard_buffer[buf_position];
+    }
+    key_status null_status;
+    null_status.code = UNDEFINED;
+    return null_status;
 }

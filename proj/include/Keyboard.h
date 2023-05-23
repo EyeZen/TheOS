@@ -28,6 +28,7 @@
 #define ASCII_DIGIT_OFFSET  0x10
 #define BUF_STEP(x) ((x < MAX_KEYB_BUFFER_SIZE -1) ? x+1 : 0  )
 typedef enum {
+    UNDEFINED=0x00,
     //Row 1
     ESCAPE=0x01,
     F1=0x3B,
@@ -164,6 +165,7 @@ typedef struct {
 void init_keyboard();
 void handle_keyboard_interrupt();
 char kgetch(key_status);
+key_status get_next_key();
 
 key_codes translate(uint8_t);
 

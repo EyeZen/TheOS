@@ -6,6 +6,8 @@
 #include <ACPI.h>
 #include <KTimer.h>
 #include <Keyboard.h>
+#include <SCHED.h>
+#include <PROC.h>
 
 #define KERNEL_CS 0x8
 #define IDT_PRESENT_FLAG 0x80
@@ -121,12 +123,13 @@ void init_idt()
 
 struct cpu_status_t* interrupt_dispatch(struct cpu_status_t* context)
 {
-    logf("Counter: %d\n", readPITCounter());
+    // logf("Counter: %d\n", readPITCounter());
     log_interrupt(context);
     // log_heap();
     // kprintf("\nHalted");
     // while(1) asm volatile("hlt");
-    logf("Interrupted\n");
+    // logf("Interrupted\n");
+    // log_context(context);
     switch(context->vector_number) {
         case INTR_DIVIDE_ERROR: {
 
@@ -168,6 +171,7 @@ struct cpu_status_t* interrupt_dispatch(struct cpu_status_t* context)
 
         } break;
         case INTR_GENERAL_PROTECTION: {
+            log_interrupt(context);
             while(1) asm("hlt");
         } break;
         case INTR_PAGE_FAULT: {
@@ -190,6 +194,8 @@ struct cpu_status_t* interrupt_dispatch(struct cpu_status_t* context)
         } break;
         case INTR_APIC_TIMER_INTERRUPT: {
             timer_handler();
+            logf(".");
+            context = schedule(context);
             write_apic_register(APIC_EOI_REGISTER_OFFSET, 0x0l);
         } break;
         case INTR_KEYBOARD_INTERRUPT: {
@@ -197,10 +203,12 @@ struct cpu_status_t* interrupt_dispatch(struct cpu_status_t* context)
             write_apic_register(APIC_EOI_REGISTER_OFFSET, 0x0l);
         } break;
         case INTR_PIT_INTERRUPT: {
+            log_interrupt(context);
             pit_irq_handler();
             write_apic_register(APIC_EOI_REGISTER_OFFSET, 0x00l);
         } break;
         case INTR_APIC_SPURIOUS_INTERRUPT: {
+            log_interrupt(context);
             write_apic_register(APIC_EOI_REGISTER_OFFSET, 0x00l);
         } break;
         default: {

@@ -22,8 +22,8 @@ size_t row = 0;
 uint32_t console_cursor_x = 0;
 uint32_t console_cursor_y = 0;
 Font* console_font = &rasci_font;
-uint32_t console_bg = BLACK;
-uint32_t console_fg = WHITE; 
+uint32_t console_bg = WHITE;
+uint32_t console_fg = BLACK; 
 
 void console_putchar(char symbol) {
     if(symbol != '\n' && (symbol <  0x20 || (unsigned char)symbol >= console_font->num_glyphs)) return;
@@ -104,8 +104,15 @@ void clear_row(size_t row) {
 }
 
 void print_clear() {
-    for (size_t i = 0; i < NUM_ROWS; i++) {
-        clear_row(i);
+    if(_KCONSOLE_TYPE == CONSOLE_TYPE_SCREEN) {
+        for (size_t i = 0; i < NUM_ROWS; i++) {
+            clear_row(i);
+        }
+    } else if(_KCONSOLE_TYPE == CONSOLE_TYPE_FRAMEBUFFER) {
+        fb_clear(console_bg);
+        console_cursor_x = console_cursor_y = 0;
+    } else {
+        return;
     }
 }
 

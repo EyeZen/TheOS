@@ -16,9 +16,25 @@
 #include <KTimer.h>
 #include <Keyboard.h>
 
+#include <SCHED.h>
+#include <PROC.h>
+
+#include <Console.h>
+
 const uint64_t end_of_mapped_memory = 4*MiB - 8;
 extern uint64_t _kernel_end;
 extern char *_binary_proj_res_fonts_default_font_psf_start;
+
+void looper() {
+	for(size_t i=0; i< 100000000; i++)
+		kprintf("L[%d] ", i);
+}
+
+void looper2(void* end) {
+	for(size_t i=10; i < (size_t)end; i++) {
+		kprintf("\n__R@%d__", i);
+	}
+}
 
 void kernel_main(struct multiboot_info_header* mboot_header) {
 	init_serial();
@@ -40,6 +56,10 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
     kprintf("Welcome to our 64-bit kernel\n\n");
 
 	init_keyboard();
+	console_init();
+	init_scheduler();
+	create_process("Looper", looper, 0);
+	create_process("Looper2", looper2, (void*)50);
 
 	// uint32_t apic_ticks = calibrate_apic();
 	uint32_t apic_ticks = 10000;
@@ -56,6 +76,9 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 
 	kprintf("Hello There\n");
 	start_apic_timer(apic_ticks, APIC_TIMER_SET_PERIODIC, APIC_TIMER_DIVIDER_2);
+	idle();
+
 	// log_page_table((uint64_t)(SIGN_EXTENSION|ENTRIES_TO_ADDRESS(511L, 511L, 511L, 511L)));
+
 	while(1);
 }

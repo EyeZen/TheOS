@@ -66,6 +66,15 @@ void strcpy(char* src, char* dst) {
     }
 }
 
+size_t strncpy(char* dst, char* src, size_t size)
+{
+	size_t i;
+	for(i=0; i < size && *dst && *src; i++) {
+		*(dst + i) = *(src + i);
+	}
+	return i;
+}
+
 int strlen(char* str) {
 	int len = 0;
 	while(str[len++] != 0);
@@ -91,4 +100,14 @@ void memcpy(void* dst, void* src, size_t size) {
     for(size_t i=0; i < size; i++) {
         *(uint8_t*)dst = *((uint8_t*)src + i);
     }
+}
+
+int memset(void* ptr, size_t value, size_t size) {
+	if(ptr == NULL) {
+		return -1;
+	}
+	for(size_t i=0; i < size; i++) { 
+		*((char*)ptr + i) = value; 
+	}
+	return 0;
 }

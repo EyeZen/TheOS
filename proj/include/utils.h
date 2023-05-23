@@ -18,10 +18,14 @@ struct MADTEntry* find_madt_record(struct MADT* madt, uint8_t type, uint32_t off
 
 void strcpy(char* src, char* dst);
 
+size_t strncpy(char* dst, char* src, size_t size);
+
 int strlen(char* str);
 
 int strcmp(char* str1, char* str2, size_t size);
 
 void memcpy(void* dst, void* src, size_t size);
+
+int memset(void* ptr, size_t value, size_t size);
 
 #endif
