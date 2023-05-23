@@ -34,13 +34,6 @@ void console_putchar(char symbol) {
         fb_putchar(symbol, console_cursor_x, console_cursor_y, console_fg, console_bg, console_font);
         console_cursor_x++;
     }
-
-    // if(console_cursor_x >= framebuffer.pitch / ((console_font->glyph_width * framebuffer.bpp)/8)) {
-    //     console_cursor_x = 0;
-    //     console_cursor_y++;
-    // }
-    // if(console_cursor_y > (framebuffer.buffer_size / console_font->glyph_height)) 
-    //     console_cursor_y = 0;
 }
 
 uint8_t color = PRINT_COLOR_WHITE | (PRINT_COLOR_BLACK << 4);

@@ -8,6 +8,7 @@
 #define MAX_PROCESSES 64
 #define MAX_RESOURCE_IDS 255
 #define PROC_DEFAULT_STACK_SIZE 0x10000 // 64KB
+#define PROC_MAX_ARGS_COUNT 1
 
 enum status_t {
     NEW,

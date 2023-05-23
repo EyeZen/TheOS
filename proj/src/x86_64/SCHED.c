@@ -30,3 +30,7 @@ struct cpu_status_t* schedule(struct cpu_status_t* context) {
     processes_list[current_process_idx]->status = RUNNING;
     return processes_list[current_process_idx]->context;
 }
+
+// void scheduler_yield() {
+
+// }

@@ -81,19 +81,13 @@ int strlen(char* str) {
 	return len;
 }
 
-int strcmp(char* str1, char* str2, size_t size) {
-	if(size == 0) {
-		int len1 = strlen(str1);
-		int len2 = strlen(str2);
-		if(len1 != len2) return len1 - len2;
-	}
-	for(size_t i=0; i < size; i++) {
-		if(*str1 == 0 || *str2 == 0) return -1;
-		int diff = *str1 - *str2;
-		if(diff != 0) return diff;
-	}
+int strcmp(char *str1, char *str2) {
+    while (*str1 && (*str1 == *str2)) {
+        str1++;
+        str2++;
+    }
 
-	return 0;
+    return *(unsigned char*)str1 - *(unsigned char*)str2;
 }
 
 void memcpy(void* dst, void* src, size_t size) {

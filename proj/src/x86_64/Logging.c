@@ -337,7 +337,7 @@ void log_tag(struct multiboot_tag* tag)
                             logfa("CreatorID: %ul\n", sdt->CreatorID);
                             logfa("CreatorRevision: %ul\n", sdt->CreatorRevision);
 
-                            if(strcmp(sdt->Signature, SDT_SIGNATURE_APIC, 4) == 0) {
+                            if(strcmp(sdt->Signature, SDT_SIGNATURE_APIC) == 0) {
                                 struct MADT* madt = (struct MADT*)sdt;
                                 struct MADTEntry* madt_entry = (struct MADTEntry*)((uint64_t)madt + sizeof(struct MADT));
 

@@ -117,11 +117,13 @@ void acpi_init(struct multiboot_info_header* mboot_header) {
         logf("RSDP Invalid Checksum\n");
         return;
     }
+    logf("RSDP Valid\n");
     struct RSDT* rsdt = (struct RSDT*)(uint64_t)rsdp->RSDTAddress;
     // map RSDT memory
     identity_map_phys_address((void*)rsdt, PRESENT_BIT);
     _bitmap_set_bit_from_address(ALIGN_PHYSADDRESS((uint64_t)rsdt));
     uint32_t header_pages_count =rsdt->sdtHeader.Length / PAGE_SIZE + 1;
+    logf("RSDP identity mapped\n");
     // map more pages, if needed
     if(header_pages_count > 1) {
         for(uint32_t i=1; i < header_pages_count; i++) {
@@ -134,6 +136,7 @@ void acpi_init(struct multiboot_info_header* mboot_header) {
         logf("RSDT Invalid Checksum\n");
         return;
     }
+    logf("RSDT valid\n");
     // map all SDT addresses
     for(uint32_t i=0; i < RSDT_ITEMS_COUNT(rsdt); i++) {
         identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)rsdt->sdtAddresses[i]), PRESENT_BIT);
@@ -159,6 +162,7 @@ void acpi_init(struct multiboot_info_header* mboot_header) {
         madt_entry = (struct MADTEntry*)((uint64_t)madt_entry + madt_entry->length);
     }
 
+    logf("MADT scanned\n");
     // map madt data
     // identity_map_phys_address((void*)ALIGN_PHYSADDRESS((uint64_t)madt_entry), PRESENT_BIT);
     // _bitmap_set_bit_from_address(ALIGN_PHYSADDRESS((uint64_t)madt_entry));
