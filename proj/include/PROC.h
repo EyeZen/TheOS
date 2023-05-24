@@ -3,6 +3,7 @@
 
 #include <IDT.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define NAME_MAX_LEN 255
 #define MAX_PROCESSES 64
@@ -44,6 +45,6 @@ void process_execution_wrapper( void (*_proc_entry)(void *), void* arg);
 void idle();
 char *get_process_status(process_t *process);
 
-void print_ver(void *flag);
+void print_ver(bool flag);
 
 #endif

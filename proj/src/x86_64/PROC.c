@@ -233,7 +233,7 @@ char *get_process_status(process_t *process) {
     }
 }
 
-void print_ver(void *flag) {
+void print_ver(bool flag) {
     print_set_color(RED, BLACK);
     console_writeline(
         "                                                                                \n"
