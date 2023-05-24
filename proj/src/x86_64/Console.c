@@ -4,7 +4,7 @@
 #include <fbuff.h>
 #include <RASCI.h>
 #include <print.h>
-
+#include <utils.h>
 #include <Logging.h>
 
 #define CONSOLE_BUF_MAX_SIZE 16000
@@ -74,8 +74,8 @@ size_t console_readline(char* str, size_t max_size, bool echo) {
     return i;
 }
 
-void console_writeline(char* str, size_t size) {
-    kprintf("Writing msg to console, size: %d\n", size);
+void console_writeline(char* str) {
+    size_t size = strlen(str);    
     for(size_t i=0; i < size; i++) {
         // TODO: why is 0 mapping to space?
         // if(*(str + i) == 0) break;

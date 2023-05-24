@@ -22,7 +22,7 @@ size_t strncpy(char* dst, char* src, size_t size);
 
 int strlen(char* str);
 
-int strcmp(char* str1, char* str2, size_t size);
+int strcmp(char *str1, char *str2);
 
 void memcpy(void* dst, void* src, size_t size);
 

@@ -20,6 +20,7 @@
 #include <PROC.h>
 
 #include <Console.h>
+#include <syscalls.h>
 
 const uint64_t end_of_mapped_memory = 4*MiB - 8;
 extern uint64_t _kernel_end;
@@ -41,9 +42,9 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 	init_idt();
 	pmm_setup(mboot_header);
 	kheap_init();
-	
+	logf("Before\n");
 	acpi_init(mboot_header);
-
+	logf("After\n");
 	struct multiboot_tag_framebuffer* fb_tag = (struct multiboot_tag_framebuffer*)find_tag(mboot_header, MULTIBOOT_TAG_TYPE_FRAMEBUFFER);
 	fb_init(fb_tag);
 	fb_draw_logo();
@@ -52,14 +53,15 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 	console_set_type(CONSOLE_TYPE_FRAMEBUFFER);
     print_clear();
     // print_set_color(PRINT_COLOR_YELLOW, PRINT_COLOR_BLACK);
-    print_set_color(WHITE, GREEN);
+    print_set_color(WHITE, BLACK);
     kprintf("Welcome to our 64-bit kernel\n\n");
 
 	init_keyboard();
 	console_init();
 	init_scheduler();
-	create_process("Looper", looper, 0);
-	create_process("Looper2", looper2, (void*)50);
+	syscalls_init();
+	// create_process("Looper", looper, 0);
+	// create_process("Looper2", looper2, (void*)50);
 
 	// uint32_t apic_ticks = calibrate_apic();
 	uint32_t apic_ticks = 10000;
@@ -74,7 +76,14 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 	block_end();
 
 
-	kprintf("Hello There\n");
+	// console_writeline("Hello There\n");
+	// console_writeline("How is the world\n");
+	
+	// char* msg = "Echo Echo!";
+	// create_process("echo", get_syscall("echo"), (void*)msg);
+	// create_process("echo", echo, msg);
+	// echo(msg);
+
 	start_apic_timer(apic_ticks, APIC_TIMER_SET_PERIODIC, APIC_TIMER_DIVIDER_2);
 	idle();
 

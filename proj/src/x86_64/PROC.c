@@ -4,6 +4,10 @@
 #include <Logging.h>
 #include <Console.h>
 
+#include <syscalls.h>
+#include <utils.h>
+#include <fbuff.h>
+
 process_t* processes_list[MAX_PROCESSES];
 size_t next_free_pid = 0;
 process_t* current_executing_process;
@@ -96,52 +100,116 @@ void process_execution_wrapper( void (*_proc_entry)(void *), void* arg) {
 }
 
 void idle() {
+    // char temp_buff[255];
+	// size_t len = console_readline(temp_buff, 255, true);
+	// console_write('\n');
+	// console_writeline(temp_buff);
+
     // const size_t buff_limit = (NAME_MAX_LEN * PROC_MAX_ARGS_COUNT + 1);
-    // char buffer[(NAME_MAX_LEN * PROC_MAX_ARGS_COUNT + 1)];
-    // size_t len, buff_itr;
+    char buffer[255];
+    size_t len, buff_itr;
 
-    // char cmdname[NAME_MAX_LEN];
-    // size_t cmd_len, cmd_itr;
+    char cmdname[NAME_MAX_LEN];
+    size_t cmd_len, cmd_itr;
 
-    // char argv[PROC_MAX_ARGS_COUNT][NAME_MAX_LEN];
-    // size_t argc, argv_itr;
+    char argv[PROC_MAX_ARGS_COUNT][NAME_MAX_LEN];
+    size_t argc, argv_itr;
     // size_t argv_lens[PROC_MAX_ARGS_COUNT];
+    bool escaped, enclosed;
+
+    print_set_color(RED, BLACK);
+    console_writeline(
+        "TTTTT  H   H  EEEEE    OOO    SSS  \n"  
+        "  T    H   H  E       O   O  S     \n"
+        "  T    HHHHH  EEEE    O   O   SSS  \n"
+        "  T    H   H  E       O   O      S \n"
+        "  T    H   H  EEEEE    OOO    SSS  \n"
+    );
     
     // while(1) {
-    //     len = buff_itr = cmd_len = cmd_itr = 0;
-    //     argc = argv_itr = 0;
+        len = buff_itr = cmd_len = cmd_itr = 0;
+        argc = argv_itr = 0;
 
-    //     console_writeline("\n$> ", 4);
-    //     len = console_readline(buffer, buff_limit, true);
+        print_set_color(WHITE, GREEN);
+        console_writeline("\nloneuser:$> ");
+        print_set_color(WHITE, BLACK);
 
-    //     // left trim
-    //     while(buffer[buff_itr] == ' ') buff_itr++;
+        len = console_readline(buffer, 255, true);
 
-    //     // parse command name
-    //     while(buffer[buff_itr] != ' ')
-    //         cmdname[cmd_itr++] = buffer[buff_itr++];
-    //     cmdname[cmd_itr] = 0;
-    //     cmd_len = cmd_itr;
+        // left trim
+        while(buffer[buff_itr] == ' ' && buff_itr < len) buff_itr++;
 
-    //     // parse command arguments, if any
-    //     for(; argc < PROC_MAX_ARGS_COUNT; argc++) {
-    //         // argument-parse exit condition
-    //         if(buff_itr >= buff_limit || buffer[buff_itr] == '\n')
-    //             break;
+        // parse command name
+        while(buffer[buff_itr] != ' ' && buffer[buff_itr] != '\n' && buff_itr < len)
+            cmdname[cmd_itr++] = buffer[buff_itr++];
+        cmdname[cmd_itr] = 0;
+        cmd_len = cmd_itr;
 
-    //         // skip spaces
-    //         while(buffer[buff_itr] == ' ') buff_itr++;
+        // parse command arguments, if any
+        for(; argc < PROC_MAX_ARGS_COUNT; argc++) {
+            // argument-parse exit condition
+            if(buff_itr >= 255 || buffer[buff_itr] == '\n')
+                break;
 
-    //         argv_itr = 0;
-    //         // parse argument[argc]
-    //         while(buffer[buff_itr] != ' ' && buffer[buff_itr] != '\n' && buff_itr < buff_limit)
-    //             argv[argc][argv_itr++] = buffer[buff_itr++]; 
-    //         argv[argc][argv_itr] = 0;;
-    //         argv_lens[argc] = argv_itr;
+            // skip spaces
+            while(buffer[buff_itr] == ' ' && buff_itr < 255) buff_itr++;
+
+            argv_itr = 0; escaped = enclosed = false;
+            // parse argument[argc]
+            while((buffer[buff_itr] != ' ' || enclosed == true) && buffer[buff_itr] != '\n' && buff_itr < 255) {
+                logf("\nscanning: \"%c\"\n", buffer[buff_itr]);
+                if(buffer[buff_itr] == '\\') { // next character that follows is escaped, ignore the escape symbol
+                    escaped = true;
+                    buff_itr++;
+                    // continue;
+                } 
+                else if(buffer[buff_itr] == '\"' || buffer[buff_itr] == '\'') {
+                    if(escaped == true) {
+                        argv[argc][argv_itr++] = buffer[buff_itr++]; // it was marked as escaped, treat as normal
+                        logf("%c", buffer[buff_itr-1]);
+                        escaped = false;
+                        // continue;
+                    } else if(enclosed == true) {
+                        enclosed = false;
+                        buff_itr++;
+                        // continue;
+                    } else {
+                        enclosed = true;
+                        buff_itr++;
+                        // continue;
+                    }
+                } 
+                else {
+                    argv[argc][argv_itr++] = buffer[buff_itr++]; 
+                    logf("%c", buffer[buff_itr-1])
+                }
+            }
+            argv[argc][argv_itr] = 0;;
+            // argv_lens[argc] = argv_itr;
+        }
+
+
+        if(strcmp("echo", cmdname) == 0) {
+            console_writeline(argv[0]);
+            console_write('\n');
+        } 
+        // else if(strcmp("clear", cmdname) == 0) {
+        //     clear_console();
+        //     // continue;
+        // } 
+        // else if(strcmp("exit", cmdname) == 0) {
+        //     return;
+        // }
+    //     else {
+    //         // create command as a separate process
+    //         syscall_t command = get_syscall(cmdname);
+    //         if(command == NULL) {
+    //             console_writeline(cmdname);
+    //             console_writeline(": Command Not Found\n");
+    //         } else {
+    //             create_process(cmdname, command, (void*)argv);
+    //         }
     //     }
-
-    //     // create command as a separate process
-    //     // create_process(cmdname, )
     // }
     
     while(1);

@@ -9,7 +9,7 @@ void clear_console();
 char console_read(bool echo);
 void console_write(char ch);
 size_t console_readline(char* str, size_t max_size, bool echo);
-void console_writeline(char* str, size_t size);
+void console_writeline(char* str);
 
 void update_view();
 void update_screen();
