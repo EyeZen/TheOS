@@ -117,6 +117,7 @@ void idle() {
     // size_t argv_lens[PROC_MAX_ARGS_COUNT];
     bool escaped, enclosed;
 
+    // clear_console();
     print_set_color(RED, BLACK);
     console_writeline(
         "TTTTT  H   H  EEEEE    OOO    SSS  \n"  
@@ -126,7 +127,7 @@ void idle() {
         "  T    H   H  EEEEE    OOO    SSS  \n"
     );
     
-    // while(1) {
+    while(1) {
         len = buff_itr = cmd_len = cmd_itr = 0;
         argc = argv_itr = 0;
 
@@ -193,24 +194,24 @@ void idle() {
             console_writeline(argv[0]);
             console_write('\n');
         } 
-        // else if(strcmp("clear", cmdname) == 0) {
-        //     clear_console();
-        //     // continue;
-        // } 
-        // else if(strcmp("exit", cmdname) == 0) {
-        //     return;
-        // }
-    //     else {
-    //         // create command as a separate process
-    //         syscall_t command = get_syscall(cmdname);
-    //         if(command == NULL) {
-    //             console_writeline(cmdname);
-    //             console_writeline(": Command Not Found\n");
-    //         } else {
-    //             create_process(cmdname, command, (void*)argv);
-    //         }
-    //     }
-    // }
+        else if(strcmp("clear", cmdname) == 0) {
+            clear_console();
+            continue;
+        } 
+        else if(strcmp("exit", cmdname) == 0) {
+            return;
+        }
+        else {
+            // create command as a separate process
+            syscall_t command = get_syscall(cmdname);
+            if(command == NULL) {
+                console_writeline(cmdname);
+                console_writeline(": Command Not Found\n");
+            } else {
+                create_process(cmdname, command, (void*)argv);
+            }
+        }
+    }
     
     while(1);
 }

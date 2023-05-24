@@ -15,7 +15,7 @@ void fb_init(struct multiboot_tag_framebuffer* mb_framebuffer) {
     framebuffer.pitch = mb_framebuffer->common.framebuffer_pitch;
     framebuffer.bpp = mb_framebuffer->common.framebuffer_bpp;
     // in bytes
-    framebuffer.buffer_size = framebuffer.width * framebuffer.height * (framebuffer.bpp / 8);
+    framebuffer.buffer_size = framebuffer.width * framebuffer.height;
 
     for(uint32_t i=0; i < framebuffer.buffer_size; i++) {
         identity_map_phys_address((void*)(framebuffer.addr + i), (PRESENT_BIT | WRITE_BIT));
@@ -40,8 +40,10 @@ void fb_put_pixel(uint32_t x, uint32_t y, uint32_t color) {
 }
 
 void fb_clear(uint32_t color) {
-    for(uint32_t i=0; i < framebuffer.buffer_size; i++) {
-        *(uint32_t*)((uint64_t)framebuffer.addr + i) = color;
+    for(uint32_t y=0; y < framebuffer.height; y++) {
+        for(uint32_t x=0; x < framebuffer.width; x++) {
+            fb_put_pixel(x, y, color);
+        }
     }
 }
 
