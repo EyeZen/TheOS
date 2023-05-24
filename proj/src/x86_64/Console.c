@@ -19,7 +19,7 @@ void clear_console() {
     console_view = 0;
     console_cursor = 0;
     current_key.code = UNDEFINED;
-    print_clear();
+    print_clear(WHITE, BLACK);
 }
 
 void console_init() {
@@ -94,7 +94,7 @@ void update_view() {
 }
 
 void update_screen() {
-    print_clear();
+    // print_clear(WHITE, BLACK);
     size_t start = console_view * console_max_chars;
     while(start < console_cursor) {
         kputchar(console_buffer[start]);

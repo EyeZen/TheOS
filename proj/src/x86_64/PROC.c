@@ -118,22 +118,16 @@ void idle() {
     bool escaped, enclosed;
 
     // clear_console();
-    print_set_color(RED, BLACK);
-    console_writeline(
-        "TTTTT  H   H  EEEEE    OOO    SSS  \n"  
-        "  T    H   H  E       O   O  S     \n"
-        "  T    HHHHH  EEEE    O   O   SSS  \n"
-        "  T    H   H  E       O   O      S \n"
-        "  T    H   H  EEEEE    OOO    SSS  \n"
-    );
-    
+    print_ver(true);
+
     while(1) {
         len = buff_itr = cmd_len = cmd_itr = 0;
         argc = argv_itr = 0;
 
         print_set_color(WHITE, GREEN);
-        console_writeline("\nloneuser:$> ");
+        console_writeline("\nakito@THEOS:~$");
         print_set_color(WHITE, BLACK);
+        console_writeline(" ");
 
         len = console_readline(buffer, 255, true);
 
@@ -201,6 +195,10 @@ void idle() {
         else if(strcmp("exit", cmdname) == 0) {
             return;
         }
+        else if(strcmp("version", cmdname) == 0) {
+            clear_console();
+            print_ver(false);
+        }
         else {
             // create command as a separate process
             syscall_t command = get_syscall(cmdname);
@@ -212,8 +210,6 @@ void idle() {
             }
         }
     }
-    
-    while(1);
 }
 
 char *get_process_status(process_t *process) {
@@ -234,5 +230,40 @@ char *get_process_status(process_t *process) {
             return "DEAD";
         default:
             return "ERROR";
+    }
+}
+
+void print_ver(void *flag) {
+    print_set_color(RED, BLACK);
+    console_writeline(
+        "                                                                                \n"
+        "        @@@@@@@@@@@@@@                                                          \n"  
+        "             @@                                                                 \n"
+        "             @@       @@                              @@@@@@@   @@@@@@@         \n"
+        "             @@       @@   @@@@@@@@@@                @@     @@ @@     @@        \n"
+        "             @@@@@@@@@@@  @@        @@               @@     @@ @@               \n"
+        "             @@@@@@@@@@@  @@        @@     @@@@@@@@  @@     @@  @@@@@@          \n"
+        "             @@       @@  @@@@@@@@@@@@    @      @   @@     @@       @@@        \n"
+        "             @@       @@  @@             @@@@@@@@    @@     @@ @@     @@        \n"
+        "             @@       @@  @@@       @@               @@     @@ @@     @@        \n"
+        "                           @@@@@@@@@@                 @@@@@@@   @@@@@@@         \n"
+        "                                                                                \n"
+    );
+    if(!(bool)flag) {
+        console_writeline(
+            "\n"
+            "||----------------------------------------------------||-----------------------||\n"
+            "||         COLLEGE OF ENGINEERING ROORKEE             ||       Created By      ||\n"
+            "||----------------------------------------------------||-----------------------||\n"
+            "||                                                    ||                       ||\n"
+            "||      Under guidance of Mr. Shobhit Prajapati       ||                       ||\n"
+            "||      Version:             1.0                      ||     Rahul Daksh       ||\n"
+            "||      Architecture:        x86_64                   ||     Vikas Rajput      ||\n"
+            "||      Bootloader:          GRUB                     ||    Shivam Tripathi    ||\n"
+            "||      Emulator:            QEMU                     ||                       ||\n"
+            "||                                                    ||                       ||\n"
+            "||----------------------------------------------------||-----------------------||\n"
+            "\n"
+        );
     }
 }

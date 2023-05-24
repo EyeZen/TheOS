@@ -29,7 +29,7 @@ enum {
     PRINT_COLOR_WHITE       = 15,
 };
 
-void print_clear();
+void print_clear(uint32_t foreground, uint32_t background);
 void kputchar(char character);
 // void print_str(char* string);
 void print_set_color(uint32_t foreground, uint32_t background);

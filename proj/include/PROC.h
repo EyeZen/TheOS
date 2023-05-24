@@ -44,4 +44,6 @@ void process_execution_wrapper( void (*_proc_entry)(void *), void* arg);
 void idle();
 char *get_process_status(process_t *process);
 
+void print_ver(void *flag);
+
 #endif

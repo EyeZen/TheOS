@@ -103,7 +103,8 @@ void clear_row(size_t row) {
     }
 }
 
-void print_clear() {
+void print_clear(uint32_t foreground, uint32_t background) {
+    console_bg = background;
     if(_KCONSOLE_TYPE == CONSOLE_TYPE_SCREEN) {
         for (size_t i = 0; i < NUM_ROWS; i++) {
             clear_row(i);
