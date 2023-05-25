@@ -11,5 +11,6 @@ syscall_t get_syscall(char* name);
 
 // syscalls
 // void echo(void* args);
+void process_list();
 
 #endif

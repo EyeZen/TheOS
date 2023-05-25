@@ -64,7 +64,7 @@ void kernel_main(struct multiboot_info_header* mboot_header) {
 	// create_process("Looper2", looper2, (void*)50);
 
 	// uint32_t apic_ticks = calibrate_apic();
-	uint32_t apic_ticks = 10000;
+	uint32_t apic_ticks = 10000000;
 	logf("(kernel_main) Calibrated apic value: %u\n", apic_ticks);
 	
 	log_mbheader(mboot_header);

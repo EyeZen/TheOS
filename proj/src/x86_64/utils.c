@@ -69,9 +69,10 @@ void strcpy(char* src, char* dst) {
 size_t strncpy(char* dst, char* src, size_t size)
 {
 	size_t i;
-	for(i=0; i < size && *dst && *src; i++) {
+	for(i=0; i < size && *src; i++) {
 		*(dst + i) = *(src + i);
 	}
+	*(dst+i) = 0;
 	return i;
 }
 

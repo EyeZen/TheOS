@@ -5,6 +5,7 @@
 #include "KHeap.h"
 #include "Fonts.h"
 #include "VMM.h"
+#include "SCHED.h"
 
 
 // #define PORT 0x3f8
@@ -668,3 +669,31 @@ void log_font_header(uint64_t font_start_address)
 
     block_end();
 }
+
+void log_scheduling_queues() {
+    logfa("Scheduling Queues: \n");
+    block_start();
+    for(uint8_t priority_level = 0; priority_level < NUM_PRIORITY_LEVELS; priority_level++) {
+        logfa("Priority_%d : ", priority_level);
+        block_start();
+        for(uint8_t process_index = 0; process_index < MAX_PROCESSES; process_index++) {
+            process_t* process = processes_list[priority_level][process_index];
+            
+            if(priority_level == current_process_priority && process_index == current_process_idx) { logfa("*"); }
+            else { logfa(" "); }
+
+            logf("Process_%d", process_index);
+            if(process != NULL) {
+                logf(":[%s] pid-%d, status: %s\n", 
+                process->name,
+                process->pid,
+                get_process_status(process));
+            } else {
+                logfa("NULL\n");
+            }
+        }
+        block_end();
+    }
+    block_end();
+}
+

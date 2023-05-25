@@ -8,26 +8,33 @@
 #include <utils.h>
 #include <fbuff.h>
 
-process_t* processes_list[MAX_PROCESSES];
+process_t* processes_list[NUM_PRIORITY_LEVELS][MAX_PROCESSES];
 size_t next_free_pid = 0;
-process_t* current_executing_process;
+
+// process_t* current_executing_process = NULL;
 size_t current_process_idx = 0;
+uint8_t current_process_priority = 0;
 
 void init_proc() {
-    for(size_t i=0; i < MAX_PROCESSES; i++) {
-        processes_list[i] = NULL;
+    for(size_t j=0; j < NUM_PRIORITY_LEVELS; j++) {
+        for(size_t i=0; i < MAX_PROCESSES; i++) {
+            processes_list[j][i] = NULL;
+        }
     }
     // add idle process;
-    create_process("IDLE", idle, 0);
+    create_process("IDLE\0", idle, 0, MIN_PRIORITY);
 }
 
-process_t* create_process(char* name, void(*_proc_entry)(void*), void* arg) {
+process_t* create_process(char* name, void(*_proc_entry)(void*), void* arg, uint8_t priority_level) {
     process_t* process;
-    size_t i;
+    uint8_t i;
+    if(priority_level > NUM_PRIORITY_LEVELS) {
+        logf("Invalid priority assignment for process: %s\n", name);
+        return NULL;
+    }
     for (i = 0; i < MAX_PROCESSES; i++) {
-        if (processes_list[i] != NULL)
+        if (processes_list[priority_level][i] != NULL)
             continue;
-        // process = &processes_list[i];
         break;
     }
     if(i == MAX_PROCESSES) {
@@ -53,6 +60,7 @@ process_t* create_process(char* name, void(*_proc_entry)(void*), void* arg) {
     strncpy(process->name, name, NAME_MAX_LEN);
     process->pid = next_free_pid++;
     process->status = READY;
+    process->priority_level = priority_level;
 
     process->context = (struct cpu_status_t*)kmalloc(sizeof(struct cpu_status_t));
     if(memset((void*)(process->context), 0, sizeof(struct cpu_status_t)) != 0) {
@@ -71,13 +79,13 @@ process_t* create_process(char* name, void(*_proc_entry)(void*), void* arg) {
     process->context->rsi = (uint64_t)arg;
     process->context->rbp = 0;
 
-    processes_list[i] = process;
+    processes_list[priority_level][i] = process;
 
     return process;
 }
 
-void proc_free(size_t idx) {
-    process_t* process = processes_list[idx];
+void proc_free(size_t idx, uint8_t priority_level) {
+    process_t* process = processes_list[priority_level][idx];
     // free stack
     kfree((void*)(process->context->iret_rsp));
     // free context
@@ -87,7 +95,7 @@ void proc_free(size_t idx) {
 }
 
 void proc_suicide_trap() {
-    current_executing_process = processes_list[current_process_idx];
+    process_t* current_executing_process = processes_list[current_process_priority][current_process_idx];
     current_executing_process->status = DEAD;
     logf("(proc_suicide_trap) Suicide function called on process: %d name: %s - Status: %s", current_executing_process->pid, current_executing_process->name, get_process_status(current_executing_process));
     while(1);
@@ -186,7 +194,7 @@ void idle() {
 
         if(strcmp("echo", cmdname) == 0) {
             console_writeline(argv[0]);
-            console_write('\n');
+            console_writechar('\n');
         } 
         else if(strcmp("clear", cmdname) == 0) {
             clear_console();
@@ -199,6 +207,9 @@ void idle() {
             clear_console();
             print_ver(false);
         }
+        else if(strcmp("ps", cmdname) == 0) {
+            process_list();
+        }
         else {
             // create command as a separate process
             syscall_t command = get_syscall(cmdname);
@@ -206,7 +217,7 @@ void idle() {
                 console_writeline(cmdname);
                 console_writeline(": Command Not Found\n");
             } else {
-                create_process(cmdname, command, (void*)argv);
+                create_process(cmdname, command, (void*)argv, MIN_PRIORITY);
             }
         }
     }
@@ -256,7 +267,7 @@ void print_ver(bool flag) {
             "||         COLLEGE OF ENGINEERING ROORKEE             ||       Created By      ||\n"
             "||----------------------------------------------------||-----------------------||\n"
             "||                                                    ||                       ||\n"
-            "||      Under guidance of Mr. Shobhit Prajapati       ||                       ||\n"
+            "||      Under guidance of Mr. Bhupal Arya             ||                       ||\n"
             "||      Version:             1.0                      ||     Rahul Daksh       ||\n"
             "||      Architecture:        x86_64                   ||     Vikas Rajput      ||\n"
             "||      Bootloader:          GRUB                     ||    Shivam Tripathi    ||\n"

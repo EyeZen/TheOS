@@ -27,6 +27,7 @@ void log_interrupt(struct cpu_status_t* context);
 void log_heap();
 void log_glyph(char symbol, Font* font);
 void log_font_header(uint64_t font_start_address);
+void log_scheduling_queues();
 
 void block_start();
 void block_end();
